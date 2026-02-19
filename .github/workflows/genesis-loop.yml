@@ -211,6 +211,24 @@ jobs:
         with:
           python-version: '3.12'
       
+      - name: 📦 Install Python Dependencies
+        run: |
+          echo "📦 Installing agent dependencies..."
+          
+          # Install Hunter Agent dependencies
+          if [ -f "apps/hunter-agent/requirements.txt" ]; then
+            echo "Installing Hunter Agent dependencies..."
+            pip install -r apps/hunter-agent/requirements.txt
+          fi
+          
+          # Install Architect AI dependencies (if any)
+          if [ -f "apps/architect-ai/requirements.txt" ]; then
+            echo "Installing Architect AI dependencies..."
+            pip install -r apps/architect-ai/requirements.txt
+          fi
+          
+          echo "✅ Dependencies installed"
+      
       - name: 🧪 Run Python Agent Tests
         run: |
           echo "🧪 VALIDATING PYTHON AGENTS"
