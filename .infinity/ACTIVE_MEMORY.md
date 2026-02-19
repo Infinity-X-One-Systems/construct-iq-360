@@ -8,6 +8,7 @@
 
 ## 🛠️ Active Configuration
 
+-   **🧠 Infinity Vision Orchestrator:** ONLINE (GitHub Actions - Central Brain)
 -   **Orchestrator App:** INSTALLED & AUTHORIZED
 -   **Auto-Merge:** ENABLED (Genesis Technology)
 -   **Genesis Loop:** ACTIVE (Every 6 Hours)
@@ -16,7 +17,7 @@
 -   **Command Center:** BUILT & READY FOR DEPLOYMENT
 -   **REST API:** AVAILABLE (scraper_api.py)
 -   **Infinity Mesh:** INTEGRATION COMPLETE
--   **Vision Cortex:** PORT 3000 (Playwright Container)
+-   **Vision Cortex (Local):** PORT 3000 (Playwright Container)
 -   **MCP Core:** PORT 8080 (Repository Management)
 -   **Scraper Status:** OPERATIONAL
 -   **Branch Auto-Delete:** ENABLED
@@ -76,11 +77,12 @@
 
 ## 🌐 System URLs
 
+-   **🧠 Infinity Vision (THE BRAIN):** https://github.com/Infinity-X-One-Systems/infinity-vision/actions
 -   **Command Center Dashboard:** https://infinity-x-one-systems.github.io/construct-iq-360/ (ready to deploy)
 -   **Repository:** https://github.com/Infinity-X-One-Systems/construct-iq-360
 -   **Workflows:** https://github.com/Infinity-X-One-Systems/construct-iq-360/actions
 -   **Lead Sniper Analysis:** https://github.com/InfinityXOneSystems/lead-sniper-system
--   **Vision Cortex:** http://localhost:3000 (Docker: infinity-vision)
+-   **Vision Cortex (Local):** http://localhost:3000 (Docker: infinity-vision)
 -   **MCP Core:** http://localhost:8080 (Docker: infinity-mcp-core)
 
 ---

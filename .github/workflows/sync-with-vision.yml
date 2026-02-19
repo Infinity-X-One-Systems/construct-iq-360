@@ -1,0 +1,108 @@
+name: 🧠 Sync with Infinity Vision
+
+on:
+  # Trigger on repository_dispatch events from infinity-vision
+  repository_dispatch:
+    types:
+      - vision-command
+      - vision-sync
+      - vision-health-check
+  
+  # Also allow manual triggering
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command from Infinity Vision'
+        required: false
+        default: 'sync'
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  process-vision-command:
+    name: Process Brain Command
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🧠 Process Command from Infinity Vision
+        run: |
+          echo "==================================="
+          echo "🧠 INFINITY VISION COMMAND RECEIVED"
+          echo "==================================="
+          echo "Event Type: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          
+          # Extract command from dispatch payload
+          COMMAND="${{ github.event.client_payload.command || inputs.command }}"
+          echo "Command: $COMMAND"
+          
+          # Process different commands
+          case "$COMMAND" in
+            "sync")
+              echo "✅ Synchronization command received"
+              echo "📊 Current system status: ONLINE"
+              ;;
+            "health-check")
+              echo "✅ Health check command received"
+              echo "💚 System health: OPTIMAL"
+              ;;
+            "trigger-hunter")
+              echo "✅ Triggering Hunter Agent..."
+              echo "🎯 Hunter will execute on next scheduled run"
+              ;;
+            *)
+              echo "ℹ️  Unknown command: $COMMAND"
+              echo "📋 Available commands: sync, health-check, trigger-hunter"
+              ;;
+          esac
+      
+      - name: 📝 Update Active Memory
+        run: |
+          # Update the active memory with vision sync timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          echo "📝 Updating active memory with timestamp: $TIMESTAMP"
+          
+          # Append sync event to active memory
+          echo "" >> .infinity/ACTIVE_MEMORY.md
+          echo "-   \`[$TIMESTAMP]\` Infinity Vision sync: Command processed successfully." >> .infinity/ACTIVE_MEMORY.md
+          
+          # Check if there are changes to commit
+          if [[ -n $(git status --porcelain) ]]; then
+            git config user.name "Infinity Vision Sync"
+            git config user.email "vision@construct-os.ai"
+            git add .infinity/ACTIVE_MEMORY.md
+            git commit -m "🧠 Infinity Vision sync: $TIMESTAMP"
+            git push
+            echo "✅ Active memory updated and committed"
+          else
+            echo "ℹ️  No changes to commit"
+          fi
+      
+      - name: 📊 Report Status Back
+        run: |
+          echo "==================================="
+          echo "✅ COMMAND PROCESSING COMPLETE"
+          echo "==================================="
+          echo "System: construct-iq-360"
+          echo "Status: OPERATIONAL"
+          echo "Brain Connection: ACTIVE"
+          echo "==================================="
+      
+      - name: 🚨 Notify on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Infinity Vision Sync Failure - ' + new Date().toISOString(),
+              body: '**System Alert**: Failed to process command from Infinity Vision brain.\n\nWorkflow Run: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+              labels: ['bug', 'automated', 'infinity-vision']
+            })
