@@ -188,9 +188,9 @@ jobs:
         if: always()
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "📦 DEPENDENCY UPDATE SUMMARY"
-          echo "=" * 60
+          echo "============================================================"
           echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo ""
           
@@ -205,7 +205,7 @@ jobs:
           
           echo ""
           echo "📅 Next check: Next Sunday at 3:00 AM UTC"
-          echo "=" * 60
+          echo "============================================================"
       
       - name: 🚨 Alert on Failure
         if: failure()

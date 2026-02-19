@@ -436,12 +436,12 @@ jobs:
       - name: ✅ Complete
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "🧠 AI RECOMMENDATION SYSTEM COMPLETE"
-          echo "=" * 60
+          echo "============================================================"
           echo "✅ Analysis completed"
           echo "✅ Roadmap generated"
           echo "✅ Issue created with recommendations"
           echo ""
           echo "📅 Next analysis: Next Monday at 9:00 AM UTC"
-          echo "=" * 60
+          echo "============================================================"

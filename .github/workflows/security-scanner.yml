@@ -226,9 +226,9 @@ The secret scanner has detected potential exposure of sensitive credentials in t
       - name: 📊 Generate Security Summary
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "🔐 SECURITY SCAN SUMMARY"
-          echo "=" * 60
+          echo "============================================================"
           echo "⏰ Scan Time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo ""
           echo "Scan Results:"
@@ -247,4 +247,4 @@ The secret scanner has detected potential exposure of sensitive credentials in t
           
           echo ""
           echo "📅 Next scan: Tomorrow at 2:00 AM UTC"
-          echo "=" * 60
+          echo "============================================================"

@@ -222,9 +222,9 @@ jobs:
       - name: 📊 Generate Scan Report
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "📡 SCAN SUMMARY"
-          echo "=" * 60
+          echo "============================================================"
           echo "⏰ Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           echo ""
           echo "📊 Activity:"
@@ -244,7 +244,7 @@ jobs:
           echo ""
           echo "✅ Continuous scan completed"
           echo "Next scan: In 30 minutes"
-          echo "=" * 60
+          echo "============================================================"
       
       - name: 🚨 Alert on Critical Issues
         if: |

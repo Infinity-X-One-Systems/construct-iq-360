@@ -205,16 +205,16 @@ jobs:
       - name: 📊 Generate Report
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "🔄 GENESIS LOOP EXECUTION SUMMARY"
-          echo "=" * 60
+          echo "============================================================"
           echo "⏰ Timestamp: ${{ steps.load_memory.outputs.timestamp }}"
           echo "🔍 Issues Detected: ${{ steps.analyze.outputs.issues_found }}"
           echo "🎯 Recommendations: ${{ steps.recommendations.outputs.has_recommendations }}"
           echo ""
           echo "✅ Genesis Loop completed successfully"
           echo "Next scan: In 6 hours"
-          echo "=" * 60
+          echo "============================================================"
       
       - name: 🚨 Create Issue for Critical Findings
         if: steps.analyze.outputs.issues_found > 50 || steps.recommendations.outputs.has_recommendations == 'true'

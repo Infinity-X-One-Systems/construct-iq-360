@@ -331,9 +331,9 @@ jobs:
       - name: ✅ Complete
         run: |
           echo ""
-          echo "=" * 60
+          echo "============================================================"
           echo "📊 DAILY ANALYSIS COMPLETE"
-          echo "=" * 60
+          echo "============================================================"
           echo "✅ Report generated and published"
           echo "📅 Next report: Tomorrow at 6:00 AM UTC"
-          echo "=" * 60
+          echo "============================================================"
