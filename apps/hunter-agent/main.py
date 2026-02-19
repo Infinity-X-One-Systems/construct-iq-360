@@ -24,7 +24,7 @@ Future Integration Points:
 import os
 import sys
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -33,7 +33,7 @@ def initialize_hunter():
     print("=" * 60)
     print("🎯 CONSTRUCT-OS HUNTER AGENT")
     print("=" * 60)
-    print(f"⏰ Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"⏰ Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"🐍 Python: {sys.version.split()[0]}")
     print(f"📂 Working Dir: {os.getcwd()}")
     print()
@@ -184,7 +184,7 @@ def generate_report(stats):
 
 def main():
     """Main execution flow for the Hunter Agent."""
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     # Initialize
     initialize_hunter()
@@ -202,7 +202,7 @@ def main():
     create_github_issues(qualified)
     
     # Generate report
-    execution_time = (datetime.utcnow() - start_time).total_seconds()
+    execution_time = (datetime.now(timezone.utc) - start_time).total_seconds()
     stats = {
         'sources_scanned': len(config.get('sources', [])),
         'raw_leads': len(raw_leads),
@@ -217,7 +217,7 @@ def main():
     output_dir.mkdir(exist_ok=True)
     
     # Save execution log
-    log_file = output_dir / f"hunt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+    log_file = output_dir / f"hunt_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     with open(log_file, 'w') as f:
         json.dump(stats, f, indent=2)
     print(f"📄 Log saved: {log_file}")

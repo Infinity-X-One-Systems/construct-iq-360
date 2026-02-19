@@ -21,7 +21,7 @@ AI Integration Points:
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -191,7 +191,7 @@ class ArchitectAI:
         report = f"""
 # Project Estimate Report
 
-**Generated:** {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+**Generated:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
 **Architect AI Version:** {self.version}
 
 ## Cost Summary
@@ -231,7 +231,7 @@ def main():
     print("=" * 60)
     print("📐 CONSTRUCT-OS ARCHITECT AI")
     print("=" * 60)
-    print(f"⏰ Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"⏰ Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print()
     
     # Initialize
@@ -258,7 +258,7 @@ def main():
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
     
-    report_file = output_dir / f"estimate_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.md"
+    report_file = output_dir / f"estimate_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.md"
     with open(report_file, 'w') as f:
         f.write(report)
     

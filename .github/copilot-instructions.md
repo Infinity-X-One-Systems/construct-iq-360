@@ -14,10 +14,16 @@
 
 ## **THE OUROBOROS PROTOCOL (Zero-Touch Operations)**
 
-1.  **Auto-Merge Mandate:** All Pull Requests created by the System Agent MUST be merged automatically if CI passes.
-2.  **Self-Healing:** If a build fails, immediately revert and patch.
-3.  **App Integration:** Fully utilize the `Infinity Orchestrator` GitHub App (ID: `app/infinity-orchestrator`) for all write operations.
-4.  **No Human Hand:** Assume the user ("Operator") wants zero manual intervention.
+1.  **Auto-Merge Mandate:** All Pull Requests created by autonomous agents (Copilot, copilot-swe-agent) are AUTOMATICALLY merged via squash if:
+    - All CI checks pass ✅
+    - No merge conflicts exist 🔀
+    - PR is from authorized autonomous agent 🤖
+    - Quality gates are met 📊
+2.  **Self-Healing:** If a build fails, the system automatically diagnoses, fixes, validates, and re-deploys.
+3.  **Genesis Integration:** Implements Genesis Repository technology for recursive self-improvement every 6 hours.
+4.  **App Integration:** Fully utilize the `Infinity Orchestrator` GitHub App (ID: `app/infinity-orchestrator`) for all write operations.
+5.  **No Human Hand:** Assume the user ("Operator") wants zero manual intervention.
+6.  **Branch Cleanup:** Merged branches are automatically deleted after successful merge.
 
 ---
 
@@ -31,9 +37,11 @@
 
 ## **REQUIRED WORKFLOWS (The Law)**
 
--   **Genesis Loop:** Runs every 6 hours to self-optimize.
--   **Hunter-Killer:** Runs daily to scrape leads.
--   **Heartbeat:** Runs every 5 minutes to verify uptime.
+-   **Genesis Loop:** Runs every 6 hours to self-optimize and continuously improve the codebase.
+-   **Auto-Merge:** Triggers on PR events to automatically merge validated autonomous PRs with squash.
+-   **Hunter-Killer:** Runs daily at 08:00 UTC to scrape construction leads.
+-   **Heartbeat:** Runs every 5 minutes to verify system uptime and update active memory.
+-   **Self-Repair:** Triggers on workflow failures to auto-diagnose and heal issues.
 
 ---
 
