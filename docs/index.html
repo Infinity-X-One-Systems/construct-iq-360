@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construct-OS Command Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000000;
+            color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #000 0%, #1a1a1a 100%);
+            padding: 2rem;
+            border-bottom: 2px solid #39FF14;
+        }
+        
+        .header h1 {
+            color: #39FF14;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            color: #FFFFFF;
+            font-size: 1.1rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card {
+            background: #1a1a1a;
+            border: 1px solid #39FF14;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(57, 255, 20, 0.3);
+        }
+        
+        .stat-card h3 {
+            color: #39FF14;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-card .value {
+            color: #FFFFFF;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .stat-card .label {
+            color: #888;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .section {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .section h2 {
+            color: #39FF14;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #39FF14;
+            padding-bottom: 0.5rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .status-online {
+            background: #39FF14;
+            color: #000;
+        }
+        
+        .status-standby {
+            background: #FFD700;
+            color: #000;
+        }
+        
+        .workflow-list {
+            list-style: none;
+        }
+        
+        .workflow-item {
+            padding: 1rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .workflow-item:last-child {
+            border-bottom: none;
+        }
+        
+        .workflow-name {
+            color: #FFFFFF;
+            font-weight: 500;
+        }
+        
+        .workflow-schedule {
+            color: #888;
+            font-size: 0.875rem;
+        }
+        
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .link-button {
+            display: block;
+            background: #39FF14;
+            color: #000;
+            text-align: center;
+            padding: 1rem;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .link-button:hover {
+            background: #2dd910;
+            transform: scale(1.05);
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #888;
+            font-size: 0.875rem;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏗️ CONSTRUCT-OS</h1>
+        <p>Autonomous Construction Intelligence • Command Center</p>
+    </div>
+    
+    <div class="container">
+        <!-- System Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>System Status</h3>
+                <div class="value">
+                    <span class="status-badge status-online">ONLINE</span>
+                </div>
+                <div class="label">Autonomous Mode Active</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Active Agents</h3>
+                <div class="value">5</div>
+                <div class="label">Hunter, Architect, Orator, Commander, Vault</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Workflows</h3>
+                <div class="value">8</div>
+                <div class="label">All Operational</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Uptime</h3>
+                <div class="value">24/7</div>
+                <div class="label">Zero Human Intervention</div>
+            </div>
+        </div>
+        
+        <!-- Agent Status -->
+        <div class="section">
+            <h2>🤖 Pentarchy Agent Status</h2>
+            <ul class="workflow-list">
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">🎯 Hunter Agent</div>
+                        <div class="workflow-schedule">Lead Discovery & Scraping</div>
+                    </div>
+                    <span class="status-badge status-online">OPERATIONAL</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">📐 Architect AI</div>
+                        <div class="workflow-schedule">Cost Estimation & Analysis</div>
+                    </div>
+                    <span class="status-badge status-online">OPERATIONAL</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">🗣️ Orator Agent</div>
+                        <div class="workflow-schedule">Proposal Generation</div>
+                    </div>
+                    <span class="status-badge status-standby">STANDBY</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">🎛️ Commander</div>
+                        <div class="workflow-schedule">System Orchestration</div>
+                    </div>
+                    <span class="status-badge status-standby">STANDBY</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">🏦 Vault</div>
+                        <div class="workflow-schedule">Knowledge Base Management</div>
+                    </div>
+                    <span class="status-badge status-standby">STANDBY</span>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Autonomous Workflows -->
+        <div class="section">
+            <h2>🔄 Autonomous Workflows</h2>
+            <ul class="workflow-list">
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Genesis Loop</div>
+                        <div class="workflow-schedule">Every 6 hours - Self-improvement & optimization</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Auto-Merge</div>
+                        <div class="workflow-schedule">On PR events - Autonomous merging</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Heartbeat</div>
+                        <div class="workflow-schedule">Every 5 minutes - Health monitoring</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Hunter Cron</div>
+                        <div class="workflow-schedule">Daily @ 08:00 UTC - Lead scraping</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Self-Repair</div>
+                        <div class="workflow-schedule">On failures - Auto-recovery</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">PR Orchestrator</div>
+                        <div class="workflow-schedule">Every 30 minutes - PR management</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">Conflict Resolver</div>
+                        <div class="workflow-schedule">On PR events - Conflict resolution</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+                <li class="workflow-item">
+                    <div>
+                        <div class="workflow-name">E2E Test</div>
+                        <div class="workflow-schedule">Daily @ 09:00 UTC - System validation</div>
+                    </div>
+                    <span class="status-badge status-online">ACTIVE</span>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Quick Links -->
+        <div class="section">
+            <h2>🔗 Quick Links</h2>
+            <div class="links">
+                <a href="https://github.com/Infinity-X-One-Systems/construct-iq-360" class="link-button">📦 Repository</a>
+                <a href="https://github.com/Infinity-X-One-Systems/construct-iq-360/actions" class="link-button">🔄 Actions</a>
+                <a href="https://github.com/Infinity-X-One-Systems/construct-iq-360/pulls" class="link-button">🔀 Pull Requests</a>
+                <a href="https://github.com/Infinity-X-One-Systems/construct-iq-360/issues" class="link-button">📋 Issues</a>
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            <p>Last Updated: <span id="timestamp"></span></p>
+            <p>Construct-OS v1.0.0 • Autonomous Mode • Zero Human Intervention</p>
+        </div>
+    </div>
+    
+    <script>
+        // Update timestamp
+        document.getElementById('timestamp').textContent = new Date().toUTCString();
+        
+        // Auto-refresh every 60 seconds
+        setTimeout(() => location.reload(), 60000);
+    </script>
+</body>
+</html>

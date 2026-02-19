@@ -1,0 +1,113 @@
+name: 🧪 E2E System Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run daily at 09:00 UTC to validate system health
+    - cron: '0 9 * * *'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  e2e-test:
+    name: 🧪 End-to-End System Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: 📦 Install Dependencies
+        run: |
+          echo "📦 Installing Hunter Agent dependencies..."
+          pip install -r apps/hunter-agent/requirements.txt
+          
+          echo "📦 Installing Architect AI dependencies..."
+          if [ -f "apps/architect-ai/requirements.txt" ]; then
+            pip install -r apps/architect-ai/requirements.txt
+          fi
+      
+      - name: 🧪 Run System Validation
+        run: |
+          python3 .github/scripts/validate-system.py
+      
+      - name: 🎯 Test Hunter Agent
+        run: |
+          echo "🎯 Testing Hunter Agent execution..."
+          cd apps/hunter-agent
+          python3 main.py
+          echo "✅ Hunter Agent test complete"
+      
+      - name: 📐 Test Architect AI
+        run: |
+          echo "📐 Testing Architect AI..."
+          python3 -c "
+          import sys
+          sys.path.append('apps/architect-ai')
+          from estimator import ConstructionEstimator
+          print('✅ Architect AI import successful')
+          "
+      
+      - name: 📊 Validate Data Layer
+        run: |
+          echo "📊 Validating data layer..."
+          
+          # Check leads.json
+          if [ -f "data/leads.json" ]; then
+            python3 -c "import json; json.load(open('data/leads.json'))"
+            echo "✅ leads.json is valid"
+          else
+            echo "❌ leads.json missing"
+            exit 1
+          fi
+          
+          # Check active memory
+          if [ -f ".infinity/ACTIVE_MEMORY.md" ]; then
+            echo "✅ ACTIVE_MEMORY.md exists"
+          else
+            echo "❌ ACTIVE_MEMORY.md missing"
+            exit 1
+          fi
+      
+      - name: 🔄 Validate Workflows
+        run: |
+          echo "🔄 Validating workflow files..."
+          
+          workflows=(
+            "auto-merge.yml"
+            "genesis-loop.yml"
+            "heartbeat.yml"
+            "hunter-cron.yml"
+            "self-repair.yml"
+            "pr-orchestrator.yml"
+            "conflict-resolver.yml"
+          )
+          
+          for workflow in "${workflows[@]}"; do
+            if [ -f ".github/workflows/$workflow" ]; then
+              echo "✅ $workflow exists"
+            else
+              echo "❌ $workflow missing"
+              exit 1
+            fi
+          done
+      
+      - name: 📈 Generate Report
+        if: always()
+        run: |
+          echo "📈 E2E TEST REPORT"
+          echo "=================="
+          echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo ""
+          echo "Test Status: ${{ job.status }}"
+          echo ""
+          echo "✅ All E2E tests completed"
