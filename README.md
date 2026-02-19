@@ -20,6 +20,8 @@ Construct-OS is a revolutionary autonomous system that transforms construction b
 - 📐 **AI-Powered Estimation** - Generates detailed cost estimates using machine learning and historical data
 - 🗣️ **Automatic Proposal Generation** - Creates client-ready proposals with zero human input
 - 🔧 **Self-Healing Architecture** - Automatically recovers from failures and maintains system health
+- 🤖 **Genesis Auto-Merge** - Autonomous PR merging with squash (zero human approval needed)
+- 🔄 **Recursive Self-Improvement** - Genesis Loop optimizes codebase every 6 hours
 - 📊 **Real-Time Dashboard** - Monitor all operations from a centralized command center
 - 💚 **Continuous Operation** - Runs 24/7 on CRON schedules and event triggers
 
@@ -89,6 +91,42 @@ construct-iq-360/
 ```
 
 ## 🔄 Autonomous Workflow
+
+### Genesis Loop (Every 6 Hours - Zero Human Intervention)
+
+```
+Genesis Loop triggers automatically
+  ↓
+  🔍 Scan repository for improvements
+  ↓
+  📋 Plan autonomous enhancements
+  ↓
+  ✅ Validate system health (all agents)
+  ↓
+  🚀 Optimize operations & update memory
+  ↓
+  Recursive self-improvement complete
+```
+
+### Auto-Merge Workflow (On PR Events)
+
+```
+Autonomous agent creates PR
+  ↓
+  Auto-Merge workflow triggered
+  ↓
+  ✅ Verify CI checks pass
+  ↓
+  ✅ Confirm no merge conflicts
+  ↓
+  🏷️ Add autonomous-verified label
+  ↓
+  🚀 Squash and merge automatically
+  ↓
+  🗑️ Delete branch
+  ↓
+  Zero human approval needed
+```
 
 ### Daily Operations (No Human Required)
 
@@ -161,17 +199,22 @@ npm run dev
 
 ## 🌱 Current Status
 
-**Version:** 1.0.0 - Genesis  
+**Version:** 1.0.0 - Genesis Enhanced  
 **Status:** 🟢 ONLINE (Autonomous Mode)  
-**Last Scan:** See `data/active_memory.md`
+**Last Scan:** See `.infinity/ACTIVE_MEMORY.md`  
+**Genesis Protocol:** ✅ ACTIVE
 
 ### Implemented
 - ✅ Monorepo structure
-- ✅ GitHub Actions workflows (heartbeat, hunter, self-repair)
+- ✅ GitHub Actions workflows (heartbeat, hunter, self-repair, auto-merge, genesis-loop)
 - ✅ Agent stubs (Hunter, Architect)
 - ✅ Issue templates
 - ✅ Self-healing infrastructure
 - ✅ Active memory persistence
+- ✅ **Genesis Auto-Merge** - Zero human PR approval
+- ✅ **Recursive Self-Improvement** - Genesis Loop every 6 hours
+- ✅ **Autonomous Squash Merge** - Clean git history
+- ✅ **Branch Auto-Delete** - Automatic cleanup
 
 ### Roadmap
 - [ ] Full Hunter Agent implementation (web scraping)
@@ -181,6 +224,7 @@ npm run dev
 - [ ] Vault knowledge base
 - [ ] Email integration
 - [ ] CRM synchronization
+- [ ] DevOps Team integration (auto-heal, auto-diagnose)
 
 ## 🤝 Contributing
 
