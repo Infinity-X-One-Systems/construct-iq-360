@@ -2,7 +2,7 @@
 
 **Status:** ONLINE  
 **Mode:** AUTONOMOUS (Ouroboros Protocol Active)  
-**Last Update:** 2026-02-19 21:03:00 UTC  
+**Last Update:** 2026-02-19 21:19:00 UTC  
 **Enhancement Level:** UNIVERSAL INVENTION ENGINE v3.0
 
 ---
@@ -31,6 +31,9 @@
 
 ## 📜 Recent Logs
 
+-   `[2026-02-19 21:19:00 UTC]` Org architecture guide created — docs/ORG_ARCHITECTURE.md.
+-   `[2026-02-19 21:19:00 UTC]` Confirmed: construct-iq-360 is construction vertical node (zero redundancy).
+-   `[2026-02-19 21:19:00 UTC]` Recommended org: 5 repos (infinity-core, infinity-orchestrator, infinity-vision, infinity-knowledge, construct-iq-360).
 -   `[2026-02-19 21:03:00 UTC]` Universal Invention Engine v3.0 activated.
 -   `[2026-02-19 21:03:00 UTC]` Dispatch Bridge deployed — Infinity Orchestrator command receiver online.
 -   `[2026-02-19 21:03:00 UTC]` Copilot Instructions upgraded — TAP Protocol v2, universal code standards.
@@ -146,6 +149,23 @@
 **Dispatch Commands**: `build-project`, `create-agent`, `generate-document`, `deploy-system`, `synthesize-media`, `run-invention-cycle`, `genesis-command`, `tap-override`
 
 **Integration Guide**: `docs/INFINITY_ORCHESTRATOR_INTEGRATION.md`
+
+---
+
+## 🏛️ Org Ecosystem — Recommended 5-Repo Structure
+
+| Repository | Role | Status |
+|---|---|---|
+| `infinity-core` | Protected sovereign core: shared agents, TAP enforcer, reusable workflows | KEEP — PROTECT |
+| `infinity-orchestrator` | GitHub App command hub — dispatches to all verticals | KEEP — HUB |
+| `infinity-vision` | AI/vision vertical: LLM, RAG, vision models | KEEP — VERTICAL |
+| `infinity-knowledge` | Vault vertical: persistent memory, vector DB, outcomes | KEEP — VERTICAL |
+| `construct-iq-360` | Construction vertical: leads, estimation, proposals | KEEP — THIS REPO |
+| `_ARCHIVE_2026` | All deprecated/merged repos | ARCHIVE |
+
+**Repos to consolidate/archive**: `infinity-core-memory` → merge into `infinity-core`, then archive. `infinity-matrix`, `celebrity-ai`, `infinity-factory`, `infinity-products`, `next-gen-ai` → evaluate and archive.
+
+**Full guide**: `docs/ORG_ARCHITECTURE.md`
 
 ---
 
