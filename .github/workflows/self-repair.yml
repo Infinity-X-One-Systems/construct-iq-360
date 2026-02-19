@@ -12,6 +12,10 @@ on:
         required: false
         default: 'all'
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   diagnose:
     name: Failure Diagnosis

@@ -6,6 +6,10 @@ on:
     - cron: '0 8 * * *'
   workflow_dispatch: # Allow manual triggers
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   hunt:
     name: Execute Hunt Protocol
