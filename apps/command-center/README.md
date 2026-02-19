@@ -1,35 +1,34 @@
-# Command Center - Construct-OS Dashboard
+# Construct-OS Command Center 🎯
+
+**Central Intelligence Dashboard for Construction Lead Automation**
 
 ## Overview
 
-The **Command Center** is the central intelligence dashboard for Construct-OS. It provides real-time visibility into:
+The Command Center is a Next.js 14 production-ready dashboard that provides real-time visibility into the Construct-OS autonomous lead generation system.
 
-- 🎯 Active leads and their qualification status
-- 🏗️ Project pipeline and estimation progress
-- 📊 System health metrics and autonomous agent activity
-- 📈 Revenue forecasting and conversion analytics
+## Features
 
-## Technology Stack
+- **🗺️ Live Lead Map**: Interactive Leaflet.js map displaying Orlando construction leads
+- **�� Real-Time Metrics**: Live dashboard with project values, success rates, and system status
+- **💻 System Terminal**: Live log feed showing Hunter-Killer operations
+- **📋 Project Board**: GitHub Projects integration
+- **⚡ PWA Ready**: Progressive Web App with offline capabilities
+- **🌙 Dark Theme**: Vegas Matt style with neon green (#39FF14) accents
+- **📱 Mobile-First**: Fully responsive design
 
-- **Framework:** Next.js 14+ (App Router)
-- **UI:** TailwindCSS + shadcn/ui
-- **Data:** GitHub API + Issues as Database
-- **Deployment:** Vercel (auto-deploy from main)
+## Tech Stack
 
-## Features (Roadmap)
-
-- [ ] Live dashboard with system status
-- [ ] Lead qualification viewer
-- [ ] AI estimation review interface
-- [ ] Proposal generation monitoring
-- [ ] Agent activity logs
-- [ ] Health metrics visualization
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Leaflet.js / React-Leaflet
+- Static Export for GitHub Pages
 
 ## Development
 
 ```bash
 # Install dependencies
-npm install
+npm install --legacy-peer-deps
 
 # Run development server
 npm run dev
@@ -38,25 +37,63 @@ npm run dev
 npm run build
 ```
 
-## Architecture Integration
+## Deployment
 
-The Command Center acts as the "visual cortex" of Construct-OS, pulling data from:
-- GitHub Issues (leads, bugs, proposals)
-- GitHub Actions (workflow status, logs)
-- Active Memory (system state)
+The dashboard is configured for GitHub Pages deployment with:
+- Static export (`output: 'export'`)
+- Base path configuration
+- PWA manifest and service worker
+- Optimized assets
 
-All data flows are read-only to maintain autonomous operation integrity.
+## Project Structure
 
-## Environment Variables
-
-Create a `.env.local` file:
-
-```env
-GITHUB_TOKEN=your_token_here
-GITHUB_OWNER=InfinityXOneSystems
-GITHUB_REPO=construct-iq-360
 ```
+src/
+├── app/
+│   ├── layout.tsx       # Root layout with PWA integration
+│   └── page.tsx         # Main dashboard page
+├── components/
+│   ├── Header.tsx       # Navigation header
+│   ├── Hero.tsx         # Hero section with live stats
+│   ├── MetricCard.tsx   # Metric display cards
+│   ├── LeadMap.tsx      # Map wrapper component
+│   ├── LeafletMap.tsx   # Leaflet implementation
+│   ├── Terminal.tsx     # Live terminal logs
+│   ├── ProjectBoard.tsx # GitHub Projects display
+│   └── ActionButtons.tsx # Quick action buttons
+├── lib/
+│   ├── leads.ts         # Lead data utilities
+│   └── terminal.ts      # Terminal log generation
+└── styles/
+    └── globals.css      # Global styles and Leaflet overrides
+```
+
+## Color Palette
+
+- **Background**: `#000000` (Black)
+- **Surface**: `#0a0a0a` (Dark Gray)
+- **Border**: `#1a1a1a` (Darker Gray)
+- **Primary**: `#FFFFFF` (White)
+- **Accent**: `#39FF14` (Neon Green)
+
+## Performance
+
+- Static site generation
+- Optimized images
+- Code splitting
+- PWA caching
+
+## Browser Support
+
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
+
+## License
+
+Proprietary - Infinity X One Systems
 
 ---
 
-**Status:** 🚧 Stub - Awaiting full implementation
+**Built with 🤖 by Construct-OS**
