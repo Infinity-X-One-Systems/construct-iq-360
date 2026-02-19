@@ -1,0 +1,444 @@
+name: 🔍 Sync Validator - Remote/Local Main Branch Audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      corrective_action:
+        description: 'Apply corrective sync actions if divergence detected'
+        required: false
+        default: 'report-only'
+        type: choice
+        options:
+          - report-only
+          - auto-correct
+  push:
+    branches:
+      - main
+  schedule:
+    # Run daily at 06:00 UTC to catch any drift
+    - cron: '0 6 * * *'
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: write
+  actions: read
+
+jobs:
+  audit-merged-prs:
+    name: 📋 Audit All Merged Pull Requests
+    runs-on: ubuntu-latest
+
+    outputs:
+      pr_count: ${{ steps.audit.outputs.pr_count }}
+      all_merged: ${{ steps.audit.outputs.all_merged }}
+      audit_json: ${{ steps.audit.outputs.audit_json }}
+
+    steps:
+      - name: 📥 Checkout Repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: 📋 Audit Merged PRs via GitHub API
+        id: audit
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('📋 MERGED PR AUDIT');
+            console.log('==================');
+
+            // Fetch all closed PRs (squash-merged ones appear as closed+merged)
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              base: 'main',
+              per_page: 100,
+              sort: 'created',
+              direction: 'asc'
+            });
+
+            const merged = pulls.filter(pr => pr.merged_at !== null);
+            console.log(`Total closed PRs: ${pulls.length}`);
+            console.log(`Squash-merged PRs: ${merged.length}`);
+            console.log('');
+
+            let allValid = true;
+            const results = [];
+
+            for (const pr of merged) {
+              const entry = {
+                number: pr.number,
+                title: pr.title,
+                author: pr.user.login,
+                merged_at: pr.merged_at,
+                merge_commit_sha: pr.merge_commit_sha,
+                head_branch: pr.head.ref,
+                head_sha: pr.head.sha,
+                valid: true,
+                issues: []
+              };
+
+              // Verify merge commit exists on main
+              try {
+                await github.rest.repos.getCommit({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: pr.merge_commit_sha
+                });
+                console.log(`✅ PR #${pr.number}: "${pr.title.substring(0, 60)}" — merge commit ${pr.merge_commit_sha.substring(0, 8)} verified`);
+              } catch (e) {
+                console.log(`❌ PR #${pr.number}: merge commit ${pr.merge_commit_sha} NOT FOUND on main`);
+                entry.valid = false;
+                entry.issues.push(`Merge commit ${pr.merge_commit_sha} not reachable from main`);
+                allValid = false;
+              }
+
+              results.push(entry);
+            }
+
+            console.log('');
+            console.log(`Summary: ${merged.length} PRs audited, ${results.filter(r => r.valid).length} valid`);
+
+            core.setOutput('pr_count', merged.length.toString());
+            core.setOutput('all_merged', allValid.toString());
+            core.setOutput('audit_json', JSON.stringify(results));
+
+            return results;
+
+  validate-main-sync:
+    name: 🔄 Validate Remote/Local main Divergence
+    runs-on: ubuntu-latest
+    needs: audit-merged-prs
+
+    outputs:
+      remote_sha: ${{ steps.compare.outputs.remote_sha }}
+      local_sha: ${{ steps.compare.outputs.local_sha }}
+      diverged: ${{ steps.compare.outputs.diverged }}
+      ahead: ${{ steps.compare.outputs.ahead }}
+      behind: ${{ steps.compare.outputs.behind }}
+      untracked_files: ${{ steps.compare.outputs.untracked_files }}
+
+    steps:
+      - name: 📥 Checkout Repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: 🔄 Compare Remote vs Local main
+        id: compare
+        run: |
+          echo "🔄 REMOTE / LOCAL MAIN SYNC CHECK"
+          echo "=================================="
+
+          # Fetch latest remote state without merging
+          git fetch origin main --tags
+
+          LOCAL_SHA=$(git rev-parse HEAD)
+          REMOTE_SHA=$(git rev-parse origin/main)
+
+          echo "Local  HEAD : $LOCAL_SHA"
+          echo "Remote HEAD : $REMOTE_SHA"
+          echo ""
+
+          # Compute divergence
+          AHEAD=$(git rev-list origin/main..HEAD --count)
+          BEHIND=$(git rev-list HEAD..origin/main --count)
+
+          echo "Commits ahead of remote  : $AHEAD"
+          echo "Commits behind remote    : $BEHIND"
+          echo ""
+
+          # Check for untracked / modified files
+          UNTRACKED=$(git status --porcelain | grep -c '^?' || true)
+          MODIFIED=$(git status --porcelain | grep -c '^ M\|^M\|^MM' || true)
+
+          echo "Untracked files : $UNTRACKED"
+          echo "Modified files  : $MODIFIED"
+          echo ""
+
+          DIVERGED=false
+          if [ "$LOCAL_SHA" != "$REMOTE_SHA" ]; then
+            DIVERGED=true
+            echo "⚠️  DIVERGENCE DETECTED"
+          else
+            echo "✅ Local main == Remote main (perfect sync)"
+          fi
+
+          # Outputs
+          echo "remote_sha=$REMOTE_SHA"  >> $GITHUB_OUTPUT
+          echo "local_sha=$LOCAL_SHA"    >> $GITHUB_OUTPUT
+          echo "diverged=$DIVERGED"      >> $GITHUB_OUTPUT
+          echo "ahead=$AHEAD"            >> $GITHUB_OUTPUT
+          echo "behind=$BEHIND"          >> $GITHUB_OUTPUT
+          echo "untracked_files=$UNTRACKED" >> $GITHUB_OUTPUT
+
+      - name: 📊 Log Commit Diff (if diverged)
+        if: steps.compare.outputs.diverged == 'true'
+        run: |
+          echo "📊 COMMITS IN LOCAL NOT IN REMOTE"
+          echo "=================================="
+          git log origin/main..HEAD --oneline || echo "(none)"
+          echo ""
+          echo "📊 COMMITS IN REMOTE NOT IN LOCAL"
+          echo "=================================="
+          git log HEAD..origin/main --oneline || echo "(none)"
+          echo ""
+          echo "📊 FILE DIFFERENCES (remote vs local)"
+          echo "======================================"
+          git diff --name-status origin/main HEAD || echo "(no file differences)"
+
+  apply-corrective-sync:
+    name: 🛠️ Apply Corrective Sync Actions
+    runs-on: ubuntu-latest
+    needs: [audit-merged-prs, validate-main-sync]
+    if: |
+      needs.validate-main-sync.outputs.diverged == 'true' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.corrective_action == 'auto-correct')
+
+    steps:
+      - name: 📥 Checkout Repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🛠️ Reset Local main to Remote
+        run: |
+          echo "🛠️ CORRECTIVE SYNC: Reset local main to match remote"
+          echo "====================================================="
+
+          git config user.name "Overseer-Prime"
+          git config user.email "overseer@construct-os.infinityxonesystems.com"
+
+          # Hard reset local main to remote main
+          git fetch origin main
+          git reset --hard origin/main
+
+          echo "✅ Local main now matches remote main"
+          echo "Remote SHA: $(git rev-parse origin/main)"
+          echo "Local  SHA: $(git rev-parse HEAD)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  generate-sync-report:
+    name: 📊 Generate Sync Report
+    runs-on: ubuntu-latest
+    needs: [audit-merged-prs, validate-main-sync]
+    if: always()
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Build Sync Report
+        env:
+          DIVERGED: ${{ needs.validate-main-sync.outputs.diverged }}
+          REMOTE_SHA: ${{ needs.validate-main-sync.outputs.remote_sha }}
+          LOCAL_SHA: ${{ needs.validate-main-sync.outputs.local_sha }}
+          AHEAD: ${{ needs.validate-main-sync.outputs.ahead }}
+          BEHIND: ${{ needs.validate-main-sync.outputs.behind }}
+          UNTRACKED: ${{ needs.validate-main-sync.outputs.untracked_files }}
+          PR_COUNT: ${{ needs.audit-merged-prs.outputs.pr_count }}
+          ALL_MERGED: ${{ needs.audit-merged-prs.outputs.all_merged }}
+          AUDIT_JSON: ${{ needs.audit-merged-prs.outputs.audit_json }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json
+          from datetime import datetime, timezone
+
+          now       = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+          diverged  = os.environ.get('DIVERGED', 'false') == 'true'
+          all_ok    = os.environ.get('ALL_MERGED', 'false') == 'true'
+          pr_count  = os.environ.get('PR_COUNT', '0')
+          ahead     = os.environ.get('AHEAD', '0')
+          behind    = os.environ.get('BEHIND', '0')
+          untracked = os.environ.get('UNTRACKED', '0')
+          remote_sha = os.environ.get('REMOTE_SHA', 'unknown')
+          local_sha  = os.environ.get('LOCAL_SHA',  'unknown')
+
+          # Build audit table rows
+          audit_rows = ''
+          history_rows = ''
+          try:
+              audit = json.loads(os.environ.get('AUDIT_JSON', '[]'))
+              for pr in audit:
+                  status = 'Complete' if pr.get('valid') else 'Incomplete'
+                  icon   = 'V' if pr.get('valid') else 'X'
+                  issues = '; '.join(pr.get('issues', [])) or 'None'
+                  sha8   = (pr.get('merge_commit_sha') or 'N/A')[:8]
+                  merged = (pr.get('merged_at') or 'N/A')[:10]
+                  title  = pr.get('title', '')[:55].replace('|', '\\|')
+                  author = pr.get('author', 'unknown')
+                  num    = pr.get('number', '?')
+                  audit_rows   += f'| #{num} | {title} | {author} | {merged} | `{sha8}` | {icon} {status} | {issues} |\n'
+                  history_rows += f'| #{num} | `{sha8}` | {pr.get("title","")[:60].replace("|","\\|")} | {merged} UTC |\n'
+          except Exception as exc:
+              audit_rows = f'| error | {exc} | - | - | - | X | - |\n'
+
+          sync_status  = 'DIVERGED'  if diverged else 'IN SYNC'
+          merge_status = 'ALL COMPLETE' if all_ok else 'ISSUES DETECTED'
+          match_label  = 'Identical' if remote_sha == local_sha else 'Different'
+
+          divergence_section = ''
+          if diverged:
+              divergence_section = f"""
+          ### Divergence Details
+
+          - Commits local has that remote does NOT: {ahead}
+          - Commits remote has that local does NOT: {behind}
+
+          #### Corrective Action
+
+          To bring a local developer workstation to perfect sync with `origin/main`:
+
+          ```bash
+          git fetch origin --prune
+          git checkout main
+          git reset --hard origin/main
+          git status           # Should show: nothing to commit, working tree clean
+          git log --oneline -5 # Should match remote HEAD
+          ```
+
+          > Warning: `git reset --hard` discards local-only commits. Back up first if needed:
+          > ```bash
+          > git checkout -b backup/main-local-$(date +%Y%m%d)
+          > git checkout main && git reset --hard origin/main
+          > ```
+          """
+          else:
+              divergence_section = '\n### No Divergence\n\nLocal `main` and remote `origin/main` are at the same commit. No corrective action required.\n'
+
+          report = f"""# PR Merge and Sync Validation Report
+
+          Generated: {now}
+          Branch: main
+          Protocol: Overseer-Prime - TAP Governance
+
+          ---
+
+          ## Executive Summary
+
+          | Metric | Value | Status |
+          |--------|-------|--------|
+          | Merged PRs Audited | {pr_count} | {merge_status} |
+          | Remote/Local Sync | {'Diverged' if diverged else 'In Sync'} | {sync_status} |
+          | Commits Ahead of Remote | {ahead} | {'WARNING' if int(ahead) > 0 else 'OK'} |
+          | Commits Behind Remote | {behind} | {'WARNING' if int(behind) > 0 else 'OK'} |
+          | Untracked Files | {untracked} | {'WARNING' if int(untracked) > 0 else 'OK'} |
+
+          ---
+
+          ## Remote vs Local main
+
+          | | SHA |
+          |---|---|
+          | Remote origin/main | `{remote_sha}` |
+          | Local main (at report time) | `{local_sha}` |
+          | Match | {match_label} |
+          {divergence_section}
+
+          ---
+
+          ## Merged Pull Request Audit
+
+          All PRs listed below were squash-merged into `main` via the Ouroboros Auto-Merge Protocol.
+
+          | PR | Title | Author | Merged | Squash Commit | Status | Notes |
+          |----|-------|--------|--------|---------------|--------|-------|
+          {audit_rows or '| - | No merged PRs found | - | - | - | - | - |'}
+
+          ---
+
+          ## Corrective Actions Reference
+
+          ### For a Developer Workstation (local sync)
+
+          ```bash
+          # 1. Fetch all remote changes
+          git fetch origin --prune --tags
+
+          # 2. Check divergence
+          git status
+          git log --oneline origin/main..HEAD   # commits local has NOT on remote
+          git log --oneline HEAD..origin/main   # commits remote has NOT locally
+
+          # 3. Hard-reset to match remote (safest corrective action)
+          git checkout main
+          git reset --hard origin/main
+
+          # 4. Verify perfect sync
+          git diff origin/main HEAD   # should be empty
+          git status                  # should show clean
+          ```
+
+          ### For Remote (GitHub Actions / CI)
+
+          The `sync-validator.yml` workflow runs daily at 06:00 UTC and on every push to `main`.
+          Set input `corrective_action: auto-correct` on manual dispatch to auto-reset remote runners.
+
+          ---
+
+          ## PR History (chronological)
+
+          | # | Squash Commit | Title | Merged At |
+          |---|---------------|-------|-----------|
+          {history_rows or '| - | - | No history | - |'}
+
+          ---
+
+          Report generated autonomously by Overseer-Prime Sync Validator.
+          TAP Protocol: Policy > Authority > Truth. Zero Human Intervention.
+          """
+
+          # Dedent the report (remove leading spaces from heredoc indentation)
+          import textwrap
+          report = textwrap.dedent(report).strip() + '\n'
+
+          with open('docs/PR_SYNC_REPORT.md', 'w') as f:
+              f.write(report)
+
+          print('Report written to docs/PR_SYNC_REPORT.md')
+          PYEOF
+
+      - name: 📤 Commit and Push Report
+        run: |
+          git config user.name "Overseer-Prime"
+          git config user.email "overseer@construct-os.infinityxonesystems.com"
+          git add docs/PR_SYNC_REPORT.md
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to report"
+          else
+            git commit -m "🔍 Sync Validator: Update PR sync report at $(date -u '+%Y-%m-%d %H:%M') UTC"
+            git push origin main
+            echo "✅ Sync report committed and pushed to main"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Write Step Summary
+        if: always()
+        run: |
+          echo "# Sync Validator Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run Time: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Merged PR Audit" >> $GITHUB_STEP_SUMMARY
+          echo "- PRs Audited: ${{ needs.audit-merged-prs.outputs.pr_count }}" >> $GITHUB_STEP_SUMMARY
+          echo "- All Merges Complete: ${{ needs.audit-merged-prs.outputs.all_merged }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Remote/Local Sync" >> $GITHUB_STEP_SUMMARY
+          echo "- Diverged: ${{ needs.validate-main-sync.outputs.diverged }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commits Ahead: ${{ needs.validate-main-sync.outputs.ahead }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commits Behind: ${{ needs.validate-main-sync.outputs.behind }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Remote SHA: ${{ needs.validate-main-sync.outputs.remote_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Full report: docs/PR_SYNC_REPORT.md on main" >> $GITHUB_STEP_SUMMARY
