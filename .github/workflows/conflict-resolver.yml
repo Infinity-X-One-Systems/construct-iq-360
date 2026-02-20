@@ -185,20 +185,20 @@ jobs:
               issue_number: parseInt('${{ needs.detect-conflicts.outputs.pr_number }}'),
               body: `## ✅ Conflicts Automatically Resolved
 
-**Overseer-Prime** has successfully resolved merge conflicts.
+            **Overseer-Prime** has successfully resolved merge conflicts.
 
-### Resolution Details
-- **Method**: ${method.toUpperCase()}
-- **Status**: ✅ SUCCESS
-- **Branch**: Updated and pushed
+            ### Resolution Details
+            - **Method**: ${method.toUpperCase()}
+            - **Status**: ✅ SUCCESS
+            - **Branch**: Updated and pushed
 
-### Next Steps
-- ✅ Conflicts resolved
-- ⏳ Awaiting CI checks
-- 🚀 Auto-merge will proceed on CI pass
+            ### Next Steps
+            - ✅ Conflicts resolved
+            - ⏳ Awaiting CI checks
+            - 🚀 Auto-merge will proceed on CI pass
 
----
-*Autonomous resolution via Ouroboros Protocol*`
+            ---
+            *Autonomous resolution via Ouroboros Protocol*`
             });
       
       - name: 📝 Comment on PR - Failure
@@ -212,25 +212,25 @@ jobs:
               issue_number: parseInt('${{ needs.detect-conflicts.outputs.pr_number }}'),
               body: `## ⚠️ Manual Conflict Resolution Required
 
-**Overseer-Prime** attempted automatic conflict resolution but complex conflicts require manual intervention.
+            **Overseer-Prime** attempted automatic conflict resolution but complex conflicts require manual intervention.
 
-### Resolution Attempts
-- ❌ Rebase strategy: Failed
-- ❌ Merge strategy: Failed
+            ### Resolution Attempts
+            - ❌ Rebase strategy: Failed
+            - ❌ Merge strategy: Failed
 
-### Required Action
-Please resolve conflicts manually:
-\`\`\`bash
-git fetch origin main
-git checkout ${{ needs.detect-conflicts.outputs.pr_branch }}
-git rebase origin/main
-# Resolve conflicts
-git rebase --continue
-git push --force-with-lease
-\`\`\`
+            ### Required Action
+            Please resolve conflicts manually:
+            \`\`\`bash
+            git fetch origin main
+            git checkout ${{ needs.detect-conflicts.outputs.pr_branch }}
+            git rebase origin/main
+            # Resolve conflicts
+            git rebase --continue
+            git push --force-with-lease
+            \`\`\`
 
----
-*Autonomous operation via Ouroboros Protocol*`
+            ---
+            *Autonomous operation via Ouroboros Protocol*`
             });
             
             // Add label
