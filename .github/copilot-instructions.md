@@ -166,3 +166,59 @@ This protocol is **immutable** and serves as the permanent governance framework 
 
 **Overseer-Prime** is the autonomous authority. All decisions are final. All operations are sovereign.
 Build anything. Any size. Any industry. Zero human intervention. 24/7. Infinite scale.
+
+---
+
+## CODEBASE DEVELOPER CONTEXT (Copilot Mobile & IDE)
+
+### Tech Stack
+- **Frontend**: Next.js 15 App Router, TypeScript strict, Tailwind CSS, `output: 'export'` (static GitHub Pages)
+- **Backend**: Python 3.12 agents, GitHub Actions
+- **Live URL**: https://infinityxonesystems.github.io/construct-iq-360/ (basePath `/construct-iq-360`)
+- **Auth**: GitHub PAT stored in localStorage (`ciq360_gh_token`), client-side only
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `src/lib/auth.ts` | GitHub PAT auth: `getToken()`, `saveUser()`, `verifyToken()` |
+| `src/lib/templates.ts` | 11 construction templates — proposals, contracts, checklists, runbooks |
+| `src/lib/crm.ts` | CRM types, `SAMPLE_LEADS`, `STATUS_LABELS`, `leadToCSVRow()` |
+| `src/lib/billing.ts` | Invoice types, `calculateInvoice()`, retainage/tax math |
+| `src/lib/csv.ts` | `downloadCSV()`, `arrayToCSV()`, Google Workspace schemas |
+| `src/app/(app)/layout.tsx` | Auth guard — redirects to `/login` if no valid token |
+| `src/app/(app)/dashboard/page.tsx` | Main dashboard |
+| `src/app/(app)/crm/page.tsx` | CRM lead table with CSV export |
+| `src/app/(app)/templates/page.tsx` | Template builder with variable form + document generation |
+| `src/app/(app)/billing/page.tsx` | Invoice management + Google Workspace export |
+| `src/app/(app)/ai-hub/page.tsx` | ChatGPT, Copilot, Orchestrator dispatch, and runner status |
+| `src/components/AppSidebar.tsx` | Collapsible sidebar navigation |
+
+### Styling Colors (Tailwind custom)
+```
+bg-dark-bg      = #000000  (page background)
+bg-dark-surface = #0a0a0a  (card/panel background)
+border-dark-border = #1a1a1a
+text-neon-green / border-neon-green = #39FF14
+```
+
+### Static Export Rules
+- NO API routes (`app/api/` is forbidden)
+- NO `getServerSideProps`, NO Server Actions
+- All data must be static, embedded, or fetched client-side from external APIs
+- `basePath: '/construct-iq-360'` in production — use `<Link>` not `<a href>` for internal nav
+
+### Dispatch Commands (Infinity Orchestrator)
+Send via `POST https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches`
+- `generate-document` — creates docs in `data/documents/`
+- `build-project` — scaffolds projects in `apps/`
+- `create-agent` — initializes agents
+- `deploy-system` — triggers deployment
+- `genesis-command` — runs Genesis Loop
+- `run-invention-cycle` — full invention cycle
+
+### Construction Domain
+- CSI MasterFormat Div 01-33 for commercial bids
+- AIA G702/G703 for progress billing applications
+- Retainage: 10% to 50% completion, then 5%
+- Lead qualification threshold: ≥ $100K project value
+- Templates: residential bid, commercial bid, TI bid, change order, subcontractor agreement, lien waiver, checklists, runbooks
