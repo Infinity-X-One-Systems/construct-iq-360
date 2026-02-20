@@ -12,6 +12,18 @@ REPO: InfinityXOneSystems/construct-iq-360
 URL: https://infinityxonesystems.github.io/construct-iq-360/
 STACK: Next.js 15 (static export), TypeScript, Tailwind CSS, GitHub Pages, Python agents
 
+ORCHESTRATION CHAIN:
+  You (ChatGPT) -> Infinity Orchestrator GitHub App (Infinity-X-One-Systems/infinity-orchestrator)
+    -> autonomous-invention.yml workflow_dispatch (goal: string)
+    -> TAP Protocol validation (Policy > Authority > Truth)
+    -> repository_dispatch to InfinityXOneSystems/construct-iq-360
+    -> dispatch-bridge.yml routes to agent runner
+
+TO TRIGGER AN ACTION: use the triggerOrchestrator action with a natural-language goal.
+Example: "Generate a residential bid for Smith Residence renovation in Orlando FL"
+Example: "Run the Hunter agent to find new leads in Orlando metro area"
+Example: "Deploy the Command Center to GitHub Pages"
+
 AGENTS (6 autonomous agents):
 - Hunter: Lead discovery (Orlando metro permit databases + Google Maps)
 - Architect: CSI MasterFormat estimation + AIA G702/G703 billing + Vertex AI AutoML
@@ -20,46 +32,76 @@ AGENTS (6 autonomous agents):
 - Commander: GitHub Pages deployment + workflow health + Genesis Loop
 - Vault: Enterprise memory, context rehydration, audit logging
 
-DISPATCH COMMANDS (via repository_dispatch):
+DISPATCH COMMANDS (routed via Infinity Orchestrator):
 - generate-document, build-project, create-agent, deploy-system, genesis-command, run-agent
-
-ORCHESTRATION: ChatGPT or Copilot -> GitHub API -> repository_dispatch -> dispatch-bridge.yml -> agent runner
 
 CRM STATUSES: new > contacted > proposal-sent > negotiating > won/lost
 TEMPLATES: residential-bid, commercial-bid, ti-bid, change-order, subcontractor-agreement, lien-waiver, pre-construction-checklist, site-safety-checklist, lead-qualification-runbook, bid-preparation-runbook
-BILLING: AIA G702/G703 style, retainage 10% to 5% at 50% completion, CSV export`;
+BILLING: AIA G702/G703 style, retainage 10% to 5% at 50% completion, CSV export
+
+AUTH: Your token needs repo scope on Infinity-X-One-Systems/infinity-orchestrator (not construct-iq-360 directly).`;
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const DISPATCH_COMMANDS = [
-  { id: 'generate-document', label: 'Generate Document', payload: { doc_type: 'residential-bid', project_name: 'New Project' } },
-  { id: 'run-agent', label: 'Run Hunter Agent', payload: { agent: 'hunter', target: 'orlando-permits' } },
-  { id: 'run-agent', label: 'Run Architect Agent', payload: { agent: 'architect', action: 'estimate' } },
-  { id: 'genesis-command', label: 'Genesis Loop', payload: { action: 'self-optimize' } },
-  { id: 'create-agent', label: 'Create New Agent', payload: { agent_name: 'custom-agent', template: 'base' } },
-  { id: 'deploy-system', label: 'Deploy System', payload: { target: 'github-pages' } },
+const ORCHESTRATOR_DISPATCH_COMMANDS = [
+  { label: 'Generate Residential Bid', goal: 'Generate a residential bid document using the residential-bid template in construct-iq-360 for a 2,500 sqft renovation project' },
+  { label: 'Generate Commercial Bid', goal: 'Generate a commercial bid document using the commercial-bid template in construct-iq-360 for a commercial office renovation' },
+  { label: 'Run Hunter Agent', goal: 'Run the Hunter lead sniper agent in construct-iq-360 to scrape new construction permit leads in Orlando metro area' },
+  { label: 'Run Architect Agent', goal: 'Run the Architect agent in construct-iq-360 to generate an AIA G702 billing application' },
+  { label: 'Genesis Self-Optimize', goal: 'Run genesis-command self-optimize on construct-iq-360 to run the Genesis Loop and improve agent performance' },
+  { label: 'Deploy Command Center', goal: 'Deploy the construct-iq-360 Command Center to GitHub Pages via the Commander agent' },
 ];
+
+const GOAL_PREVIEW_LENGTH = 60;
 
 const OPENAPI_SPEC = `openapi: 3.0.0
 info:
-  title: Construct-OS Infinity Orchestrator API
-  version: 1.0.0
+  title: Construct-OS via Infinity Orchestrator
+  version: 2.0.0
   description: >
-    GitHub Actions runner bridge. ChatGPT sends commands to this API,
-    which fires repository_dispatch events that trigger GitHub Actions
-    workflows on InfinityXOneSystems/construct-iq-360.
+    Bridge to the Infinity Orchestrator GitHub App.
+    ChatGPT/Copilot send goals here; the Orchestrator
+    routes commands to InfinityXOneSystems/construct-iq-360.
 
 servers:
   - url: https://api.github.com
 
 paths:
-  /repos/InfinityXOneSystems/construct-iq-360/dispatches:
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches:
     post:
-      operationId: dispatchCommand
-      summary: Send a command to the Infinity Orchestrator via GitHub Actions runner
+      operationId: triggerOrchestrator
+      summary: Send a goal to the Infinity Orchestrator runner
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ref, inputs]
+              properties:
+                ref:
+                  type: string
+                  default: main
+                inputs:
+                  type: object
+                  required: [goal]
+                  properties:
+                    goal:
+                      type: string
+                      description: Natural-language goal for the Orchestrator
+      responses:
+        '204':
+          description: Orchestrator runner triggered
+
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/dispatches:
+    post:
+      operationId: dispatchInventionTrigger
+      summary: Send invention_trigger dispatch to Orchestrator
       security:
         - bearerAuth: []
       requestBody:
@@ -72,35 +114,58 @@ paths:
               properties:
                 event_type:
                   type: string
-                  enum:
-                    - generate-document
-                    - build-project
-                    - create-agent
-                    - deploy-system
-                    - genesis-command
-                    - run-agent
-                    - run-invention-cycle
-                  description: Command type dispatched to the GitHub Actions runner
+                  enum: [invention_trigger]
                 client_payload:
                   type: object
-                  description: Command parameters passed to the runner
+                  properties:
+                    goal:
+                      type: string
+                    target_repo:
+                      type: string
+                    command:
+                      type: string
       responses:
         '204':
-          description: Command accepted - runner triggered
+          description: Dispatch accepted
+
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/runs:
+    get:
+      operationId: listOrchestratorRuns
+      summary: List recent Orchestrator runs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of runs
+
+  /repos/InfinityXOneSystems/construct-iq-360/actions/runs:
+    get:
+      operationId: listConstructRuns
+      summary: List recent Construct-OS runner runs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of runs
 
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      description: GitHub Personal Access Token with repo scope`;
+      description: >
+        GitHub token with repo scope on
+        Infinity-X-One-Systems/infinity-orchestrator.
+        Create a Fine-Grained PAT at github.com/settings/tokens
+        with repository access to Infinity-X-One-Systems/infinity-orchestrator
+        and Read & Write: Actions permission.`;
 
 const PLUGIN_MANIFEST = `{
   "schema_version": "v1",
   "name_for_model": "construct_os_orchestrator",
-  "name_for_human": "Construct-OS Orchestrator",
-  "description_for_model": "Dispatch commands to the Construct-OS autonomous construction intelligence platform via GitHub Actions runners. Use this to generate documents, run agents (Hunter, Architect, Orator, Shadow, Commander, Vault), trigger deployments, and interact with the CRM, billing, and template systems.",
-  "description_for_human": "Control the Construct-OS platform: run agents, generate construction documents, manage leads and billing via GitHub Actions.",
+  "name_for_human": "Construct-OS via Infinity Orchestrator",
+  "description_for_model": "Send natural-language goals to the Infinity Orchestrator GitHub App (Infinity-X-One-Systems/infinity-orchestrator). The Orchestrator validates via TAP Protocol, runs multi-agent phases, then dispatches to Construct-OS (InfinityXOneSystems/construct-iq-360). Use triggerOrchestrator for goals like 'generate a residential bid' or 'run the Hunter agent'. Auth: GitHub token with repo scope on Infinity-X-One-Systems/infinity-orchestrator.",
+  "description_for_human": "Control Construct-OS via the Infinity Orchestrator: run agents, generate construction documents, manage leads and billing.",
   "auth": {
     "type": "user_http",
     "authorization_type": "bearer"
@@ -111,7 +176,7 @@ const PLUGIN_MANIFEST = `{
   },
   "logo_url": "https://infinityxonesystems.github.io/construct-iq-360/icons/icon-192.png",
   "contact_email": "admin@infinityxonesystems.com",
-  "legal_info_url": "https://github.com/InfinityXOneSystems/construct-iq-360"
+  "legal_info_url": "https://github.com/Infinity-X-One-Systems/infinity-orchestrator"
 }`;
 
 const COPILOT_INSTRUCTIONS = `# Copilot Mobile - Construct-OS System Context
@@ -119,6 +184,14 @@ const COPILOT_INSTRUCTIONS = `# Copilot Mobile - Construct-OS System Context
 ## Repository
 InfinityXOneSystems/construct-iq-360
 Live: https://infinityxonesystems.github.io/construct-iq-360/
+
+## Orchestration Chain
+Copilot Mobile -> Infinity Orchestrator GitHub App
+  (Infinity-X-One-Systems/infinity-orchestrator)
+  -> autonomous-invention.yml workflow_dispatch
+  -> TAP Protocol validation
+  -> repository_dispatch to InfinityXOneSystems/construct-iq-360
+  -> dispatch-bridge.yml -> agent runner
 
 ## Your Capabilities in This Repo
 When working in this repository via Copilot Mobile, you can:
@@ -135,11 +208,18 @@ When working in this repository via Copilot Mobile, you can:
 - Templates in apps/command-center/src/lib/templates.ts
 - CRM data in apps/command-center/src/lib/crm.ts
 
-### Trigger Runners
-curl -X POST https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches \\
-  -H "Authorization: Bearer YOUR_PAT" \\
+### Trigger Runners (via Infinity Orchestrator)
+curl -X POST \\
+  https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Accept: application/vnd.github.v3+json" \\
-  -d '{"event_type": "generate-document", "client_payload": {"doc_type": "residential-bid"}}'
+  -d '{"ref":"main","inputs":{"goal":"Generate a residential bid document in construct-iq-360"}}'
+
+## Auth Requirements
+- Token needs repo scope on Infinity-X-One-Systems/infinity-orchestrator
+- Fine-Grained PAT: github.com/settings/tokens
+  - Repository: Infinity-X-One-Systems/infinity-orchestrator
+  - Permissions: Read & Write: Actions
 
 ## System Architecture
 - Static export app (no API routes - all backend via GitHub Actions)
@@ -198,25 +278,33 @@ export default function AiHubPage() {
     }
   };
 
-  const dispatchCommand = async (cmd: typeof DISPATCH_COMMANDS[0]) => {
+  const dispatchViaOrchestrator = async (cmd: typeof ORCHESTRATOR_DISPATCH_COMMANDS[0]) => {
     if (!token) { setDispatchStatus('No GitHub token found. Please log in.'); return; }
     setDispatchLoading(true);
     setDispatchStatus('');
     try {
-      const res = await fetch('https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ event_type: cmd.id, client_payload: cmd.payload }),
-      });
+      const res = await fetch(
+        'https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ref: 'main', inputs: { goal: cmd.goal } }),
+        }
+      );
       if (res.status === 204) {
-        setDispatchStatus(`Command dispatched: ${cmd.label}. Runner triggered.`);
+        setDispatchStatus(`Goal dispatched via Infinity Orchestrator: ${cmd.label}. Runner triggered.`);
       } else {
         const err = await res.json().catch(() => ({}));
-        setDispatchStatus(`Error ${res.status}: ${(err as { message?: string }).message ?? 'Dispatch failed.'}`);
+        const msg = (err as { message?: string }).message ?? 'Dispatch failed.';
+        if (res.status === 403 || res.status === 404) {
+          setDispatchStatus(`Error ${res.status}: ${msg} — Ensure your token has repo scope on Infinity-X-One-Systems/infinity-orchestrator.`);
+        } else {
+          setDispatchStatus(`Error ${res.status}: ${msg}`);
+        }
       }
     } catch {
       setDispatchStatus('Network error. Check connection and token.');
@@ -358,20 +446,26 @@ export default function AiHubPage() {
         {tab === 'copilot' && (
           <div className="px-8 py-6 max-w-3xl space-y-6">
             <div>
-              <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Copilot Mobile — System Connection</h2>
-              <p className="text-xs text-gray-500">Configure GitHub Copilot Mobile to read and write to this repository with full agent context and runner access.</p>
+              <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Copilot Mobile — Infinity Orchestrator Connection</h2>
+              <p className="text-xs text-gray-500">Configure GitHub Copilot Mobile to send commands through the Infinity Orchestrator GitHub App, which routes them to Construct-OS runners.</p>
+            </div>
+
+            <div className="bg-amber-400/5 border border-amber-400/20 rounded p-4">
+              <p className="text-xs text-amber-400 font-bold uppercase tracking-widest mb-1">Auth Requirement</p>
+              <p className="text-xs text-amber-300">Your token needs <span className="font-bold">repo scope on Infinity-X-One-Systems/infinity-orchestrator</span> — not construct-iq-360 directly. Create a Fine-Grained PAT at github.com/settings/tokens with Actions: Read & Write on that repo.</p>
             </div>
 
             <div className="space-y-4">
               {[
                 {
                   step: 'Step 1',
-                  title: 'Connect Repository',
+                  title: 'Connect Both Repositories',
                   items: [
                     'Open GitHub Mobile app — tap Copilot',
-                    'Tap "+" then Add repository context',
-                    'Search and select InfinityXOneSystems/construct-iq-360',
-                    'Grant read/write permissions',
+                    'Tap "+" → Add repository context',
+                    'Add InfinityXOneSystems/construct-iq-360 (read context)',
+                    'Add Infinity-X-One-Systems/infinity-orchestrator (dispatch runner)',
+                    'Grant read/write permissions on both',
                   ],
                 },
                 {
@@ -379,8 +473,9 @@ export default function AiHubPage() {
                   title: 'System Instructions File',
                   items: [
                     'Copilot Mobile reads .github/copilot-instructions.md automatically',
-                    'This file contains full system context, agent capabilities, and dispatch commands',
+                    'This file contains full system context, agent list, orchestration chain, and dispatch curl commands',
                     'The file is maintained by the Commander agent and updated each Genesis Loop',
+                    'All curl commands in the file route through the Infinity Orchestrator',
                   ],
                 },
               ].map(section => (
@@ -393,14 +488,14 @@ export default function AiHubPage() {
               ))}
 
               <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
-                <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Step 3 — Trigger Runners from Mobile</h3>
-                <p className="text-xs text-gray-500 mb-3">Ask Copilot to run this curl command with your PAT to fire a GitHub Actions runner:</p>
+                <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Step 3 — Trigger via Infinity Orchestrator from Mobile</h3>
+                <p className="text-xs text-gray-500 mb-3">Ask Copilot to run this curl command — routes through the Orchestrator GitHub App, not directly to construct-iq-360:</p>
                 <div className="bg-black rounded p-3 font-mono text-xs text-gray-400 overflow-x-auto leading-relaxed">
                   <span className="text-neon-green">curl</span> -X POST \<br/>
-                  {'  '}https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches \<br/>
-                  {'  '}-H &quot;Authorization: Bearer {'$'}{'{YOUR_PAT}'}&quot; \<br/>
+                  {'  '}https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches \<br/>
+                  {'  '}-H &quot;Authorization: Bearer {'$'}{'{YOUR_TOKEN}'}&quot; \<br/>
                   {'  '}-H &quot;Accept: application/vnd.github.v3+json&quot; \<br/>
-                  {'  '}-d &apos;&#123;&quot;event_type&quot;: &quot;generate-document&quot;, &quot;client_payload&quot;: &#123;&quot;doc_type&quot;: &quot;residential-bid&quot;&#125;&#125;&apos;
+                  {'  '}-d &apos;&#123;&quot;ref&quot;:&quot;main&quot;,&quot;inputs&quot;:&#123;&quot;goal&quot;:&quot;Generate a residential bid in construct-iq-360 for Smith Residence&quot;&#125;&#125;&apos;
                 </div>
               </div>
 
@@ -418,15 +513,32 @@ export default function AiHubPage() {
             <div>
               <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">ChatGPT Custom GPT — Infinity Orchestrator Bridge</h2>
               <p className="text-xs text-gray-500">
-                The &quot;hack&quot;: ChatGPT Custom GPT with a GitHub API action. No separate server required —
-                GitHub API acts as the bridge to GitHub Actions runners. ChatGPT dispatches commands
-                that execute agents directly.
+                The bridge: ChatGPT Custom GPT sends goals to the Infinity Orchestrator GitHub App
+                (<span className="text-white font-mono">Infinity-X-One-Systems/infinity-orchestrator</span>).
+                The Orchestrator runs TAP validation, multi-agent phases, then dispatches to Construct-OS runners.
+                No separate server required — the GitHub Actions runner IS the bridge.
               </p>
+            </div>
+
+            <div className="bg-dark-surface border border-neon-green/10 rounded p-4">
+              <div className="font-mono text-xs text-gray-400 space-y-0.5 leading-relaxed">
+                <div><span className="text-neon-green">ChatGPT Custom GPT  /  Copilot Mobile</span></div>
+                <div className="ml-4">↓  POST workflow_dispatch (goal: natural language)  (token: Infinity-X-One-Systems scope)</div>
+                <div className="ml-4"><span className="text-white">Infinity Orchestrator</span>  →  autonomous-invention.yml  (ubuntu-latest runner)</div>
+                <div className="ml-8">↓  TAP Protocol validation (Policy &gt; Authority &gt; Truth)</div>
+                <div className="ml-8">↓  repository_dispatch  →  InfinityXOneSystems/construct-iq-360</div>
+                <div className="ml-12"><span className="text-white">dispatch-bridge.yml</span>  routes by event_type</div>
+                <div className="ml-16 text-gray-600">generate-document  →  Orator agent</div>
+                <div className="ml-16 text-gray-600">run-agent          →  Hunter / Architect / Shadow</div>
+                <div className="ml-16 text-gray-600">genesis-command    →  genesis-loop.yml</div>
+                <div className="ml-12">↓  Output committed to data/ or docs/</div>
+                <div className="ml-8"><span className="text-neon-green">Vault</span>  archives to data/dispatch-log/commands.jsonl</div>
+              </div>
             </div>
 
             <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest">OpenAPI Action Spec</h3>
+                <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest">OpenAPI Action Spec (v2 — Orchestrator Bridge)</h3>
                 <button
                   onClick={() => copy(OPENAPI_SPEC, setCopiedSpec)}
                   className="text-xs text-gray-500 hover:text-neon-green transition-colors uppercase tracking-widest border border-neon-green/10 rounded px-2 py-1"
@@ -434,7 +546,7 @@ export default function AiHubPage() {
                   {copiedSpec ? 'Copied' : 'Copy'}
                 </button>
               </div>
-              <pre className="bg-black rounded p-4 text-xs text-gray-400 overflow-x-auto font-mono whitespace-pre">{OPENAPI_SPEC}</pre>
+              <pre className="bg-black rounded p-4 text-xs text-gray-400 overflow-x-auto font-mono whitespace-pre max-h-72 overflow-y-auto">{OPENAPI_SPEC}</pre>
             </div>
 
             <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
@@ -451,16 +563,28 @@ export default function AiHubPage() {
             </div>
 
             <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
-              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Setup in ChatGPT</h3>
-              <ol className="text-xs text-gray-400 space-y-2 list-decimal list-inside">
-                <li>ChatGPT → Explore GPTs → Create a GPT</li>
-                <li>Name it <span className="text-white font-bold">Construct-OS Operator</span></li>
-                <li>Instructions: paste the system prompt from the ChatGPT tab</li>
-                <li>Configure → Add Action</li>
-                <li>Paste the OpenAPI spec above</li>
-                <li>Authentication: Bearer Token — paste your GitHub PAT (repo scope)</li>
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-4">Setup in ChatGPT — Step by Step</h3>
+              <ol className="text-xs text-gray-400 space-y-3 list-decimal list-inside">
+                <li>
+                  <span className="text-white font-bold">Create GitHub Token</span> — Fine-Grained PAT at{' '}
+                  <span className="text-neon-green font-mono">github.com/settings/tokens</span>{' '}
+                  with repository access to <span className="text-white font-mono">Infinity-X-One-Systems/infinity-orchestrator</span>,
+                  permission: <span className="text-white">Actions: Read & Write</span>
+                </li>
+                <li>
+                  <span className="text-white font-bold">ChatGPT</span> → Explore GPTs → Create a GPT →
+                  Name it <span className="text-white font-bold">Construct-OS Operator</span>
+                </li>
+                <li>Instructions: paste the system prompt from the ChatGPT tab (includes orchestration chain)</li>
+                <li>Configure → <span className="text-white font-bold">Add Action</span></li>
+                <li>Paste the OpenAPI spec above (v2 — targets Infinity Orchestrator, not construct-iq-360 directly)</li>
+                <li>Authentication: <span className="text-white font-bold">Bearer Token</span> — paste your Fine-Grained PAT (scoped to infinity-orchestrator)</li>
                 <li>Save and publish (private)</li>
-                <li>ChatGPT can now dispatch commands to GitHub Actions runners</li>
+                <li>
+                  <span className="text-white font-bold">Test it:</span> Ask{' '}
+                  <span className="text-neon-green font-mono">&quot;Generate a residential bid for Smith Residence&quot;</span>{' '}
+                  — ChatGPT will call <span className="font-mono text-gray-300">triggerOrchestrator</span>, runner fires, Orchestrator dispatches to construct-iq-360
+                </li>
               </ol>
             </div>
           </div>
@@ -470,8 +594,8 @@ export default function AiHubPage() {
         {tab === 'runner' && (
           <div className="px-8 py-6 max-w-3xl space-y-6">
             <div>
-              <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">GitHub Actions Runner — Direct Dispatch</h2>
-              <p className="text-xs text-gray-500">Dispatch commands directly to the runner from this dashboard using your authenticated session.</p>
+              <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Runner — Dispatch via Infinity Orchestrator</h2>
+              <p className="text-xs text-gray-500">Send goals to the Infinity Orchestrator GitHub App runner from this dashboard. Your session token must have repo scope on Infinity-X-One-Systems/infinity-orchestrator.</p>
             </div>
 
             {!token && (
@@ -491,33 +615,34 @@ export default function AiHubPage() {
             )}
 
             <div className="grid grid-cols-2 gap-3">
-              {DISPATCH_COMMANDS.map((cmd, i) => (
+              {ORCHESTRATOR_DISPATCH_COMMANDS.map((cmd, i) => (
                 <button
                   key={i}
-                  onClick={() => dispatchCommand(cmd)}
+                  onClick={() => dispatchViaOrchestrator(cmd)}
                   disabled={dispatchLoading || !token}
                   className="text-left bg-dark-surface border border-neon-green/10 rounded p-4 hover:border-neon-green/30 hover:bg-neon-green/5 transition-all disabled:opacity-40 group"
                 >
                   <div className="text-xs font-bold text-white uppercase tracking-widest mb-1 group-hover:text-neon-green transition-colors">{cmd.label}</div>
-                  <div className="text-xs text-gray-600 font-mono">{cmd.id}</div>
-                  <div className="text-xs text-gray-700 mt-2 font-mono truncate">{JSON.stringify(cmd.payload)}</div>
+                  <div className="text-xs text-gray-700 mt-2 font-mono truncate">{cmd.goal.substring(0, GOAL_PREVIEW_LENGTH)}...</div>
                 </button>
               ))}
             </div>
 
             <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
-              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-4">Runner Architecture</h3>
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-4">Runner Architecture — via Infinity Orchestrator</h3>
               <div className="font-mono text-xs text-gray-400 space-y-0.5 leading-relaxed">
-                <div><span className="text-neon-green">ChatGPT / Copilot / Dashboard</span></div>
-                <div className="ml-4">↓  POST /repos/.../dispatches  (GitHub API)</div>
-                <div className="ml-4"><span className="text-white">GitHub Actions Runner</span>  (ubuntu-latest)</div>
-                <div className="ml-8">↓  dispatch-bridge.yml routes by event_type</div>
-                <div className="ml-12 text-gray-600">generate-document  →  document-pipeline.yml</div>
-                <div className="ml-12 text-gray-600">run-agent          →  hunter-cron.yml / biz-ops</div>
+                <div><span className="text-neon-green">Dashboard / ChatGPT GPT / Copilot Mobile</span></div>
+                <div className="ml-4">↓  POST workflow_dispatch (goal: string)  →  Bearer token (infinity-orchestrator scope)</div>
+                <div className="ml-4"><span className="text-white">Infinity Orchestrator</span>  →  autonomous-invention.yml  (ubuntu-latest)</div>
+                <div className="ml-8">↓  TAP Protocol (Policy &gt; Authority &gt; Truth)</div>
+                <div className="ml-8">↓  repository_dispatch: invention_trigger</div>
+                <div className="ml-8"><span className="text-white">InfinityXOneSystems/construct-iq-360</span>  →  dispatch-bridge.yml</div>
+                <div className="ml-12 text-gray-600">generate-document  →  Orator / document-pipeline.yml</div>
+                <div className="ml-12 text-gray-600">run-agent          →  Hunter-cron / biz-ops agents</div>
                 <div className="ml-12 text-gray-600">genesis-command    →  genesis-loop.yml</div>
                 <div className="ml-12 text-gray-600">deploy-system      →  deploy-command-center.yml</div>
                 <div className="ml-8">↓  Output committed to data/ or docs/</div>
-                <div className="ml-4"><span className="text-neon-green">Vault agent</span>  archives to data/dispatch-log/commands.jsonl</div>
+                <div className="ml-4"><span className="text-neon-green">Vault</span>  archives to data/dispatch-log/commands.jsonl</div>
               </div>
             </div>
           </div>

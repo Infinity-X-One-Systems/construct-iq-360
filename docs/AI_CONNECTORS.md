@@ -134,45 +134,29 @@ For autonomous multi-step tasks:
 ## 3. Infinity Orchestrator Connection
 
 ### How It Works
-The Infinity Orchestrator (external system) sends `repository_dispatch` events to this repo via the GitHub API. The `dispatch-bridge.yml` workflow receives and routes commands.
+ChatGPT, Copilot, and this dashboard send commands to the **Infinity Orchestrator GitHub App** (`Infinity-X-One-Systems/infinity-orchestrator`). The Orchestrator runs TAP Protocol validation and multi-phase execution, then dispatches `repository_dispatch` events to `InfinityXOneSystems/construct-iq-360`. The `dispatch-bridge.yml` workflow receives and routes those commands.
 
-### Dispatch Bridge Command Reference
-
-| Command | Module | Description |
-|---------|--------|-------------|
-| `generate-document` | orator-engine | Creates documents in `data/documents/` |
-| `build-project` | genesis-builder | Scaffolds new projects in `apps/` |
-| `create-agent` | agent-factory | Initializes new autonomous agents |
-| `deploy-system` | commander | Triggers deployment pipeline |
-| `synthesize-media` | media-synthesizer | Media generation |
-| `run-invention-cycle` | invention-engine | Full invention pipeline |
-| `genesis-command` | genesis-loop | Self-improvement cycle |
-| `tap-override` | tap-governor | Policy enforcement |
-
-### Sending Commands
-```bash
-# Via GitHub API (with PAT token)
-curl -X POST \
-  -H "Authorization: Bearer YOUR_PAT_TOKEN" \
-  -H "Accept: application/vnd.github+json" \
-  -H "X-GitHub-Api-Version: 2022-11-28" \
-  https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches \
-  -d '{
-    "event_type": "generate-document",
-    "client_payload": {
-      "document_type": "proposal-commercial",
-      "client_name": "CNL Real Estate",
-      "project_name": "Downtown Tower",
-      "project_value": "2500000"
-    }
-  }'
+**Orchestration Chain:**
+```
+ChatGPT / Copilot / Dashboard
+  → POST workflow_dispatch (goal: natural language)
+  → Infinity-X-One-Systems/infinity-orchestrator → autonomous-invention.yml
+  → TAP Protocol (Policy > Authority > Truth)
+  → repository_dispatch (invention_trigger) → InfinityXOneSystems/construct-iq-360
+  → dispatch-bridge.yml → agent runner → data/ or docs/
 ```
 
-### From AI Hub (UI)
-1. Navigate to **Command Center → AI Hub → Orchestrator**
-2. Select a command type or write custom JSON
-3. Click **Trigger Dispatch**
-4. Monitor at **GitHub → Actions → Dispatch Bridge**
+**Auth:** Fine-Grained PAT with Actions: Read & Write on `Infinity-X-One-Systems/infinity-orchestrator`
+
+### Sending Commands via Infinity Orchestrator
+```bash
+# Route through Infinity Orchestrator GitHub App (recommended)
+curl -X POST \
+  https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Accept: application/vnd.github+json" \
+  -d '{"ref":"main","inputs":{"goal":"Generate a commercial bid document in construct-iq-360 for CNL Real Estate Downtown Tower project, $2.5M"}}'
+```
 
 ---
 

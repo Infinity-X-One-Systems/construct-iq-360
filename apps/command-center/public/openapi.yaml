@@ -1,28 +1,31 @@
 openapi: 3.0.0
 info:
-  title: Construct-OS Infinity Orchestrator API
-  version: 1.0.0
+  title: Construct-OS via Infinity Orchestrator
+  version: 2.0.0
   description: >
-    GitHub Actions runner bridge for Construct-OS.
-    ChatGPT and Copilot send commands to this API,
-    which fires repository_dispatch events that trigger
-    GitHub Actions workflows on InfinityXOneSystems/construct-iq-360.
-    No separate server is required — GitHub API is the bridge.
+    Bridge for ChatGPT Custom GPT and Copilot Mobile to the Infinity Orchestrator
+    GitHub App (Infinity-X-One-Systems/infinity-orchestrator).
+    Commands are sent as workflow_dispatch to the Orchestrator's
+    autonomous-invention.yml runner, which relays them to
+    InfinityXOneSystems/construct-iq-360 via repository_dispatch.
+    No separate server required — the GitHub Actions runner IS the bridge.
 
 servers:
   - url: https://api.github.com
-    description: GitHub API (public)
+    description: GitHub API
 
 paths:
-  /repos/InfinityXOneSystems/construct-iq-360/dispatches:
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches:
     post:
-      operationId: dispatchCommand
-      summary: Send a command to the Infinity Orchestrator via GitHub Actions runner
+      operationId: triggerOrchestrator
+      summary: Send a goal to the Infinity Orchestrator runner
       description: >
-        Fires a repository_dispatch event. The dispatch-bridge.yml workflow routes
-        the event_type to the appropriate agent runner.
-        Supported event types: generate-document, build-project, create-agent,
-        deploy-system, genesis-command, run-agent, run-invention-cycle.
+        Triggers a workflow_dispatch on the Infinity Orchestrator's
+        autonomous-invention.yml. The Orchestrator validates via the TAP
+        Protocol, runs multi-phase discovery/scoring/build, then relays
+        Construct-OS commands to InfinityXOneSystems/construct-iq-360.
+        Use natural language in the 'goal' field — the Orchestrator
+        translates goals into agent commands automatically.
       security:
         - bearerAuth: []
       requestBody:
@@ -30,44 +33,91 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DispatchRequest'
+              $ref: '#/components/schemas/OrchestratorDispatch'
             examples:
-              generate_document:
+              generate_bid:
                 summary: Generate a residential bid document
                 value:
-                  event_type: generate-document
-                  client_payload:
-                    doc_type: residential-bid
-                    project_name: Smith Residence Renovation
+                  ref: main
+                  inputs:
+                    goal: "Generate a residential bid for a 3,500 sqft home renovation in Orlando FL for Smith Residence - use construct-iq-360 residential-bid template"
               run_hunter:
                 summary: Run the Hunter lead sniper agent
                 value:
-                  event_type: run-agent
-                  client_payload:
-                    agent: hunter
-                    target: orlando-permits
-              genesis_loop:
-                summary: Trigger Genesis Loop self-optimization
+                  ref: main
+                  inputs:
+                    goal: "Run the Hunter agent to scrape new construction permit leads in Orlando metro area and qualify any leads over $100K"
+              generate_change_order:
+                summary: Create a change order document
                 value:
-                  event_type: genesis-command
-                  client_payload:
-                    action: self-optimize
+                  ref: main
+                  inputs:
+                    goal: "Generate a change order for $15,000 HVAC scope addition on the Westside Commercial project in construct-iq-360"
+              genesis_self_optimize:
+                summary: Trigger self-optimization cycle
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Run genesis-command self-optimize on construct-iq-360 to improve agent performance"
+              deploy_system:
+                summary: Deploy the Command Center
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Deploy the construct-iq-360 Command Center to GitHub Pages"
       responses:
         '204':
-          description: Command accepted — GitHub Actions runner has been triggered
+          description: Orchestrator runner triggered — workflow_dispatch accepted
         '401':
-          description: Authentication failed — check GitHub PAT scope (needs repo)
+          description: Authentication failed — token needs repo scope on Infinity-X-One-Systems org
         '403':
-          description: Forbidden — PAT does not have required permissions
+          description: Forbidden — token lacks write:actions permission on infinity-orchestrator
         '404':
-          description: Repository not found or PAT does not have access
+          description: Workflow not found — verify autonomous-invention.yml exists on main branch
         '422':
-          description: Validation failed — check event_type and client_payload
+          description: Validation failed — check ref and inputs fields
 
-  /repos/InfinityXOneSystems/construct-iq-360/actions/runs:
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/dispatches:
+    post:
+      operationId: dispatchInventionTrigger
+      summary: Send an invention_trigger event directly to the Orchestrator
+      description: >
+        Fires a repository_dispatch with event_type 'invention_trigger'
+        to the Infinity Orchestrator. The client_payload.goal field
+        contains natural-language instructions for the autonomous engine.
+        Use this as an alternative to workflow_dispatch when you need
+        to include structured payload data alongside the goal.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InventionTrigger'
+            examples:
+              construct_os_command:
+                summary: Route a Construct-OS agent command through the Orchestrator
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Run architect agent to generate AIA G702 billing application for Westside TI project"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: architect
+                    action: billing
+      responses:
+        '204':
+          description: invention_trigger dispatch accepted by Orchestrator
+        '401':
+          description: Authentication failed
+        '422':
+          description: Validation failed
+
+  /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/runs:
     get:
-      operationId: listWorkflowRuns
-      summary: List recent workflow runs (runner status)
+      operationId: listOrchestratorRuns
+      summary: List recent Infinity Orchestrator workflow runs
       security:
         - bearerAuth: []
       parameters:
@@ -75,7 +125,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [repository_dispatch, push, schedule, workflow_dispatch]
+            enum: [workflow_dispatch, repository_dispatch, push, schedule]
         - name: status
           in: query
           schema:
@@ -89,35 +139,114 @@ paths:
             maximum: 100
       responses:
         '200':
-          description: List of workflow runs with status
+          description: List of Orchestrator workflow runs with status
+
+  /repos/InfinityXOneSystems/construct-iq-360/actions/runs:
+    get:
+      operationId: listConstructRuns
+      summary: List recent Construct-OS workflow runs
+      description: Check the status of runners triggered by the Orchestrator on construct-iq-360.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: event
+          in: query
+          schema:
+            type: string
+            enum: [repository_dispatch, workflow_dispatch, schedule]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [queued, in_progress, completed, waiting]
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: List of Construct-OS workflow runs
 
 components:
   schemas:
-    DispatchRequest:
+    OrchestratorDispatch:
+      type: object
+      required:
+        - ref
+        - inputs
+      properties:
+        ref:
+          type: string
+          description: Branch to dispatch on — always use 'main'
+          default: main
+          example: main
+        inputs:
+          type: object
+          required:
+            - goal
+          properties:
+            goal:
+              type: string
+              description: >
+                Natural-language goal for the Orchestrator to execute.
+                Include the target system (construct-iq-360) and specific
+                action in the goal text. The Orchestrator translates this
+                into agent commands automatically.
+              example: "Generate a residential bid document for Smith Residence renovation in construct-iq-360"
+            dry_run:
+              type: string
+              description: Set to 'true' to plan without executing mutations
+              default: "false"
+              enum: ["true", "false"]
+            skip_phases:
+              type: string
+              description: Comma-separated phases to skip (discovery, scoring, sandbox, validation, deploy)
+              example: ""
+
+    InventionTrigger:
       type: object
       required:
         - event_type
       properties:
         event_type:
           type: string
-          description: Command type to dispatch to the GitHub Actions runner
+          description: Must be 'invention_trigger' for the Orchestrator to process
           enum:
-            - generate-document
-            - build-project
-            - create-agent
-            - deploy-system
-            - genesis-command
-            - run-agent
-            - run-invention-cycle
+            - invention_trigger
         client_payload:
           type: object
-          description: >
-            Command parameters passed to the runner.
-            Structure varies by event_type.
+          description: Structured payload forwarded to the Orchestrator runner
           properties:
+            goal:
+              type: string
+              description: Natural-language goal for the Orchestrator
+            target_repo:
+              type: string
+              description: Target repository for cross-repo dispatch
+              example: InfinityXOneSystems/construct-iq-360
+            command:
+              type: string
+              description: Construct-OS command type
+              enum:
+                - generate-document
+                - build-project
+                - create-agent
+                - deploy-system
+                - genesis-command
+                - run-agent
+                - run-invention-cycle
+            agent:
+              type: string
+              description: Biz-Ops agent to run
+              enum: [hunter, architect, orator, shadow, commander, vault]
+            action:
+              type: string
+              description: Agent action to perform
             doc_type:
               type: string
-              description: For generate-document — template ID
+              description: Document template for generate-document commands
               enum:
                 - residential-bid
                 - commercial-bid
@@ -129,26 +258,17 @@ components:
                 - site-safety-checklist
                 - lead-qualification-runbook
                 - bid-preparation-runbook
-            agent:
-              type: string
-              description: For run-agent — agent ID
-              enum: [hunter, architect, orator, shadow, commander, vault]
-            action:
-              type: string
-              description: Action for the agent to perform
-            project_name:
-              type: string
-              description: Project name for document generation
-            target:
-              type: string
-              description: Target for agent runs (e.g. orlando-permits)
           additionalProperties: true
 
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: GitHub PAT
+      bearerFormat: GitHub PAT or GitHub App Installation Token
       description: >
-        GitHub Personal Access Token with 'repo' scope.
-        Create at: https://github.com/settings/tokens/new?scopes=repo
+        Authentication token with repo scope on the Infinity-X-One-Systems org.
+        Option A — GitHub PAT (Fine-Grained): create at
+        https://github.com/settings/tokens with repository access to
+        Infinity-X-One-Systems/infinity-orchestrator and actions:write permission.
+        Option B — GitHub App Installation Token: use the Infinity Orchestrator
+        GitHub App installation credentials for the InfinityXOneSystems org.

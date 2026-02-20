@@ -207,14 +207,35 @@ text-neon-green / border-neon-green = #39FF14
 - All data must be static, embedded, or fetched client-side from external APIs
 - `basePath: '/construct-iq-360'` in production — use `<Link>` not `<a href>` for internal nav
 
-### Dispatch Commands (Infinity Orchestrator)
-Send via `POST https://api.github.com/repos/InfinityXOneSystems/construct-iq-360/dispatches`
-- `generate-document` — creates docs in `data/documents/`
-- `build-project` — scaffolds projects in `apps/`
-- `create-agent` — initializes agents
-- `deploy-system` — triggers deployment
-- `genesis-command` — runs Genesis Loop
-- `run-invention-cycle` — full invention cycle
+### Dispatch Commands (via Infinity Orchestrator GitHub App)
+Route ALL commands through the Infinity Orchestrator — NOT directly to construct-iq-360.
+
+**Endpoint (workflow_dispatch):**
+```bash
+curl -X POST \
+  https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  -d '{"ref":"main","inputs":{"goal":"Generate a residential bid in construct-iq-360 for Smith Residence"}}'
+```
+
+**Auth:** Fine-Grained PAT with Actions: Read & Write on `Infinity-X-One-Systems/infinity-orchestrator`
+
+**Goal examples (natural language — Orchestrator translates to agent commands):**
+- `"Generate a residential bid document in construct-iq-360 for PROJECT_NAME"`
+- `"Run the Hunter agent in construct-iq-360 to find leads in Orlando metro"`
+- `"Run genesis-command self-optimize on construct-iq-360"`
+- `"Deploy construct-iq-360 Command Center to GitHub Pages"`
+
+**Orchestration Chain:**
+```
+ChatGPT / Copilot / Dashboard
+  → POST workflow_dispatch (goal)
+  → Infinity-X-One-Systems/infinity-orchestrator → autonomous-invention.yml
+  → TAP Protocol validation
+  → repository_dispatch (invention_trigger) → InfinityXOneSystems/construct-iq-360
+  → dispatch-bridge.yml → agent runner → data/ or docs/ committed
+```
 
 ### Construction Domain
 - CSI MasterFormat Div 01-33 for commercial bids
@@ -247,13 +268,16 @@ python apps/biz-ops/agent_manager.py --agent vault --action rehydrate
 ```
 
 ### ChatGPT Custom GPT Action
-The `public/openapi.yaml` file is the OpenAPI spec for a ChatGPT Custom GPT action.
-It calls `POST https://api.github.com/repos/.../dispatches` with a GitHub PAT to trigger runners.
+The `public/openapi.yaml` file (v2) is the OpenAPI spec for a ChatGPT Custom GPT action.
+It targets the Infinity Orchestrator GitHub App (`Infinity-X-One-Systems/infinity-orchestrator`)
+via `workflow_dispatch` on `autonomous-invention.yml` — NOT directly to construct-iq-360.
+Auth: Fine-Grained PAT with Actions: Read & Write on `Infinity-X-One-Systems/infinity-orchestrator`.
 See: AI Hub page → Orchestrator tab for full setup instructions.
 
 ### Copilot Mobile
 `.github/copilot-instructions.md` (this file) is automatically read by Copilot Mobile.
-Use the curl commands in the AI Hub → Copilot Mobile tab to trigger runners from mobile.
+All curl commands route through the Infinity Orchestrator (not construct-iq-360 directly).
+See: AI Hub page → Copilot Mobile tab for full setup instructions and curl examples.
 
 ## UI RULES (MANDATORY)
 - NO emojis anywhere in the UI — use SVG icons only
