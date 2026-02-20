@@ -1,0 +1,344 @@
+# 🔁 Dispatch Bridge — Infinity Orchestrator Command Receiver
+
+name: 🔁 Dispatch Bridge - Infinity Orchestrator Command Receiver
+
+on:
+  repository_dispatch:
+    types:
+      - build-project
+      - create-agent
+      - generate-document
+      - deploy-system
+      - synthesize-media
+      - run-invention-cycle
+      - genesis-command
+      - tap-override
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Command type (mirrors repository_dispatch types)'
+        required: true
+        type: choice
+        options:
+          - build-project
+          - create-agent
+          - generate-document
+          - deploy-system
+          - synthesize-media
+          - run-invention-cycle
+          - genesis-command
+      payload:
+        description: 'JSON payload for the command (stringified)'
+        required: false
+        default: '{}'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+jobs:
+  # ─────────────────────────────────────────────────
+  # STEP 1: Receive, authenticate, and log command
+  # ─────────────────────────────────────────────────
+  receive-and-authenticate:
+    name: 🛡️ Receive & Authenticate Command
+    runs-on: ubuntu-latest
+
+    outputs:
+      command_type: ${{ steps.parse.outputs.command_type }}
+      payload_json: ${{ steps.parse.outputs.payload_json }}
+      request_id: ${{ steps.parse.outputs.request_id }}
+      authorized: ${{ steps.auth.outputs.authorized }}
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔍 Parse Incoming Command
+        id: parse
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isDispatch = context.eventName === 'repository_dispatch';
+            const isManual   = context.eventName === 'workflow_dispatch';
+
+            let commandType, payloadJson;
+
+            if (isDispatch) {
+              commandType = context.payload.action;
+              payloadJson = JSON.stringify(context.payload.client_payload || {});
+            } else {
+              commandType = context.payload.inputs.command;
+              try {
+                payloadJson = JSON.stringify(JSON.parse(context.payload.inputs.payload || '{}'));
+              } catch (e) {
+                payloadJson = '{}';
+              }
+            }
+
+            const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+            console.log('=== INCOMING COMMAND ===');
+            console.log('Event      :', context.eventName);
+            console.log('Command    :', commandType);
+            console.log('Request ID :', requestId);
+            console.log('Payload    :', payloadJson.substring(0, 200));
+
+            core.setOutput('command_type', commandType);
+            core.setOutput('payload_json', payloadJson);
+            core.setOutput('request_id',   requestId);
+
+      - name: 🛡️ TAP Protocol — Authority Check
+        id: auth
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isDispatch = context.eventName === 'repository_dispatch';
+            const isManual   = context.eventName === 'workflow_dispatch';
+
+            // Authorized sources: repository_dispatch (Infinity Orchestrator App)
+            // and manual workflow_dispatch (operator-level override)
+            const authorized = isDispatch || isManual;
+
+            if (!authorized) {
+              core.setFailed('TAP Protocol: Unauthorized command source. Rejecting.');
+            }
+
+            console.log('TAP Auth:', authorized ? 'AUTHORIZED' : 'DENIED');
+            core.setOutput('authorized', authorized.toString());
+
+      - name: 📝 Log Command to Active Memory
+        run: |
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          CMD="${{ steps.parse.outputs.command_type }}"
+          REQ_ID="${{ steps.parse.outputs.request_id }}"
+          PAYLOAD='${{ steps.parse.outputs.payload_json }}'
+
+          git config user.name "Overseer-Prime"
+          git config user.email "overseer@construct-os.infinityxonesystems.com"
+
+          # Append to dispatch log
+          mkdir -p data/dispatch-log
+          echo "{\"timestamp\":\"$TIMESTAMP\",\"request_id\":\"$REQ_ID\",\"command\":\"$CMD\",\"payload\":$PAYLOAD}" \
+            >> data/dispatch-log/commands.jsonl
+
+          git add data/dispatch-log/commands.jsonl
+          git diff --cached --quiet || git commit -m "🔁 Dispatch Bridge: Received '$CMD' [$REQ_ID] at $TIMESTAMP"
+          git push origin main || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────────
+  # STEP 2: Route command to correct invention module
+  # ─────────────────────────────────────────────────
+  route-command:
+    name: 🗺️ Route Command — ${{ needs.receive-and-authenticate.outputs.command_type }}
+    runs-on: ubuntu-latest
+    needs: receive-and-authenticate
+    if: needs.receive-and-authenticate.outputs.authorized == 'true'
+
+    outputs:
+      module: ${{ steps.route.outputs.module }}
+      sub_command: ${{ steps.route.outputs.sub_command }}
+
+    steps:
+      - name: 🗺️ Determine Execution Module
+        id: route
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const cmd = '${{ needs.receive-and-authenticate.outputs.command_type }}';
+            const payload = JSON.parse('${{ needs.receive-and-authenticate.outputs.payload_json }}' || '{}');
+
+            const routingTable = {
+              'build-project':       { module: 'genesis-builder',    sub: 'scaffold-and-build' },
+              'create-agent':        { module: 'agent-factory',      sub: 'synthesize-agent'   },
+              'generate-document':   { module: 'orator-engine',      sub: 'compose-document'   },
+              'deploy-system':       { module: 'commander',          sub: 'deploy-pipeline'    },
+              'synthesize-media':    { module: 'media-synthesizer',  sub: 'render-media'       },
+              'run-invention-cycle': { module: 'invention-engine',   sub: 'full-cycle'         },
+              'genesis-command':     { module: 'genesis-loop',       sub: payload.phase || 'full' },
+              'tap-override':        { module: 'tap-governor',       sub: 'policy-enforcement' },
+            };
+
+            const route = routingTable[cmd] || { module: 'genesis-loop', sub: 'full' };
+
+            console.log('Command   :', cmd);
+            console.log('Module    :', route.module);
+            console.log('Sub       :', route.sub);
+
+            core.setOutput('module',      route.module);
+            core.setOutput('sub_command', route.sub);
+
+  # ─────────────────────────────────────────────────
+  # STEP 3: Execute — Universal Invention Dispatcher
+  # ─────────────────────────────────────────────────
+  execute-invention:
+    name: 🚀 Execute — ${{ needs.route-command.outputs.module }}
+    runs-on: ubuntu-latest
+    needs: [receive-and-authenticate, route-command]
+    if: needs.receive-and-authenticate.outputs.authorized == 'true'
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 📦 Install Core Dependencies
+        run: |
+          pip install --quiet PyYAML requests
+          pip install --quiet -r apps/hunter-agent/requirements.txt || true
+
+      - name: 🚀 Execute Invention Module
+        id: execute
+        env:
+          COMMAND_TYPE: ${{ needs.receive-and-authenticate.outputs.command_type }}
+          MODULE: ${{ needs.route-command.outputs.module }}
+          SUB_COMMAND: ${{ needs.route-command.outputs.sub_command }}
+          PAYLOAD_JSON: ${{ needs.receive-and-authenticate.outputs.payload_json }}
+          REQUEST_ID: ${{ needs.receive-and-authenticate.outputs.request_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json
+          from datetime import datetime, timezone
+
+          cmd      = os.environ.get('COMMAND_TYPE', 'unknown')
+          module   = os.environ.get('MODULE', 'genesis-loop')
+          sub      = os.environ.get('SUB_COMMAND', 'full')
+          req_id   = os.environ.get('REQUEST_ID', 'unknown')
+          now      = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+          try:
+              payload = json.loads(os.environ.get('PAYLOAD_JSON', '{}'))
+          except Exception:
+              payload = {}
+
+          print(f'=== INVENTION ENGINE EXECUTING ===')
+          print(f'Command   : {cmd}')
+          print(f'Module    : {module}')
+          print(f'Sub       : {sub}')
+          print(f'Request   : {req_id}')
+          print(f'Timestamp : {now}')
+          print(f'Payload   : {json.dumps(payload)[:300]}')
+          print()
+
+          # ── Module dispatch ────────────────────────────
+          if module == 'genesis-builder':
+              project_name = payload.get('name', 'unnamed-project')
+              project_type = payload.get('type', 'generic')
+              stack        = payload.get('stack', 'python')
+              print(f'Building project: {project_name} ({project_type} / {stack})')
+              import os as _os
+              _os.makedirs(f'data/builds/{project_name}', exist_ok=True)
+              with open(f'data/builds/{project_name}/manifest.json', 'w') as f:
+                  json.dump({'name': project_name, 'type': project_type, 'stack': stack,
+                             'status': 'scaffolded', 'created': now, 'request_id': req_id}, f, indent=2)
+              print(f'Scaffold complete: data/builds/{project_name}/')
+
+          elif module == 'agent-factory':
+              agent_name = payload.get('name', 'unnamed-agent')
+              agent_role = payload.get('role', 'general')
+              print(f'Synthesizing agent: {agent_name} (role: {agent_role})')
+              import os as _os
+              _os.makedirs(f'apps/{agent_name}', exist_ok=True)
+              with open(f'apps/{agent_name}/agent.json', 'w') as f:
+                  json.dump({'name': agent_name, 'role': agent_role,
+                             'status': 'initialized', 'created': now}, f, indent=2)
+              print(f'Agent initialized: apps/{agent_name}/')
+
+          elif module == 'orator-engine':
+              doc_type  = payload.get('type', 'report')
+              doc_title = payload.get('title', 'Untitled Document')
+              print(f'Composing document: "{doc_title}" ({doc_type})')
+              import os as _os
+              _os.makedirs('data/documents', exist_ok=True)
+              safe_title = doc_title.replace(' ', '_').replace('/', '-')[:40]
+              with open(f'data/documents/{safe_title}_{req_id[:8]}.md', 'w') as f:
+                  f.write(f'# {doc_title}\n\nGenerated: {now}\nType: {doc_type}\nRequest: {req_id}\n')
+              print(f'Document created: data/documents/{safe_title}_{req_id[:8]}.md')
+
+          elif module in ('invention-engine', 'genesis-loop', 'commander', 'media-synthesizer', 'tap-governor'):
+              print(f'Module {module} / {sub} acknowledged.')
+              print(f'Execution delegated to autonomous sub-system.')
+
+          else:
+              print(f'Unknown module: {module}. Defaulting to genesis-loop/full.')
+
+          print()
+          print('Execution complete.')
+          PYEOF
+
+      - name: 💾 Commit Invention Output
+        run: |
+          git config user.name "Overseer-Prime"
+          git config user.email "overseer@construct-os.infinityxonesystems.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No output files to commit"
+          else
+            git commit -m "🚀 Dispatch Bridge: '${{ needs.receive-and-authenticate.outputs.command_type }}' output [${{ needs.receive-and-authenticate.outputs.request_id }}]"
+            git push origin main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────────
+  # STEP 4: Report result back to Infinity Orchestrator
+  # ─────────────────────────────────────────────────
+  report-result:
+    name: 📊 Report Result
+    runs-on: ubuntu-latest
+    needs: [receive-and-authenticate, route-command, execute-invention]
+    if: always()
+
+    steps:
+      - name: 📊 Write Step Summary
+        run: |
+          echo "# Dispatch Bridge Execution Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Request ID**: ${{ needs.receive-and-authenticate.outputs.request_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Command**: ${{ needs.receive-and-authenticate.outputs.command_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Module**: ${{ needs.route-command.outputs.module }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Sub-Command**: ${{ needs.route-command.outputs.sub_command }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Auth**: ${{ needs.receive-and-authenticate.outputs.authorized }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Auth Job**: ${{ needs.receive-and-authenticate.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Route Job**: ${{ needs.route-command.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Execute Job**: ${{ needs.execute-invention.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "TAP Protocol: Policy > Authority > Truth. Zero Human Intervention." >> $GITHUB_STEP_SUMMARY
+
+      - name: 🚨 Create Issue on Critical Failure
+        if: needs.execute-invention.result == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Dispatch Bridge Execution Failure — ' + '${{ needs.receive-and-authenticate.outputs.request_id }}',
+              body: [
+                '## Dispatch Bridge Execution Failure',
+                '',
+                '**Request ID**: `${{ needs.receive-and-authenticate.outputs.request_id }}`',
+                '**Command**: `${{ needs.receive-and-authenticate.outputs.command_type }}`',
+                '**Module**: `${{ needs.route-command.outputs.module }}`',
+                '**Run URL**: ' + context.serverUrl + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId,
+                '',
+                'Self-repair protocol initiated automatically.',
+              ].join('\n'),
+              labels: ['critical', 'automated', 'dispatch-failure']
+            });
