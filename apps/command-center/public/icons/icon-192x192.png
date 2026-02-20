@@ -1,0 +1,10 @@
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <rect width="192" height="192" fill="#000000"/>
+  <circle cx="96" cy="96" r="60" fill="none" stroke="#39FF14" stroke-width="8"/>
+  <circle cx="96" cy="96" r="24" fill="#39FF14"/>
+  <line x1="96" y1="36" x2="96" y2="66" stroke="#39FF14" stroke-width="6"/>
+  <line x1="96" y1="126" x2="96" y2="156" stroke="#39FF14" stroke-width="6"/>
+  <line x1="36" y1="96" x2="66" y2="96" stroke="#39FF14" stroke-width="6"/>
+  <line x1="126" y1="96" x2="156" y2="96" stroke="#39FF14" stroke-width="6"/>
+  <text x="96" y="185" font-family="monospace" font-size="16" fill="#39FF14" text-anchor="middle">CONSTRUCT-OS</text>
+</svg>

@@ -9,6 +9,8 @@
 
 ## 🛠️ Active Configuration
 
+-   **System Type:** FULLY AUTONOMOUS END-TO-END CONSTRUCTION BUSINESS SYSTEM
+-   **Capabilities:** Lead Gen, Operations, Billing, Communications (24/7)
 -   **Orchestrator App:** INSTALLED & AUTHORIZED
 -   **Auto-Merge:** ENABLED (Genesis Technology)
 -   **PR Orchestrator:** OPERATIONAL (Every 30 Min) ✅
@@ -41,6 +43,8 @@
 
 ## 🎯 System State
 
+**System Identity:** FULLY AUTONOMOUS END-TO-END CONSTRUCTION BUSINESS SYSTEM  
+**Core Functions:** Lead Generation, Operations, Billing, Communications (24/7)  
 **Operational Mode:** Autonomous  
 **Governance Protocol:** Overseer-Prime (Active)  
 **Self-Healing:** ENHANCED ✅  

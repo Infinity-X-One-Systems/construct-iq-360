@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # Allow manual triggers
 
 permissions:
-  contents: read
+  contents: write
   issues: write
 
 jobs:
@@ -29,6 +29,8 @@ jobs:
         run: |
           cd apps/hunter-agent
           pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps chromium
       
       - name: 🎯 Execute Hunter Agent
         run: |
@@ -38,6 +40,18 @@ jobs:
           python main.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 📤 Commit Lead Data
+        run: |
+          git config user.name "Construct-OS Hunter"
+          git config user.email "hunter@construct-os.ai"
+          git add data/raw-leads/
+          if git diff --staged --quiet; then
+            echo "No new leads to commit"
+          else
+            git commit -m "chore: Hunter agent discovered leads - $(date -u +%Y-%m-%d)"
+            git push
+          fi
       
       - name: 💾 Archive Hunt Results
         uses: actions/upload-artifact@v4
