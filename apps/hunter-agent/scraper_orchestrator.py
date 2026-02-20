@@ -20,7 +20,7 @@ import logging
 import random
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from enum import Enum
 from pathlib import Path
@@ -82,7 +82,7 @@ class ScrapeResult:
     error: Optional[str] = None
     items_extracted: int = 0
     execution_time_ms: float = 0
-    timestamp: datetime = field(default_factory=lambda: datetime.utcnow())
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class HeadlessInstance:
@@ -269,7 +269,7 @@ class ScraperOrchestrator:
         """Start the orchestrator with specified number of instances"""
         num_instances = num_instances or self.config.max_instances
         self._running = True
-        self._metrics['start_time'] = datetime.utcnow()
+        self._metrics['start_time'] = datetime.now(timezone.utc)
         
         logger.info(f"Starting {num_instances} headless instances...")
         
@@ -311,7 +311,7 @@ class ScraperOrchestrator:
     
     async def scrape(self, target: ScrapeTarget) -> ScrapeResult:
         """Execute a single scrape operation with auto-retry"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
         target_id = hashlib.md5(target.url.encode()).hexdigest()[:12]
         
         for attempt in range(self.config.retry_attempts):
@@ -335,7 +335,7 @@ class ScraperOrchestrator:
                 else:
                     data = {}
                 
-                execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                 
                 self._metrics['total_scrapes'] += 1
                 self._metrics['successful_scrapes'] += 1
@@ -359,7 +359,7 @@ class ScraperOrchestrator:
                 
                 if attempt == self.config.retry_attempts - 1:
                     # Final attempt failed
-                    execution_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+                    execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                     self._metrics['total_scrapes'] += 1
                     self._metrics['failed_scrapes'] += 1
                     
@@ -404,7 +404,7 @@ class ScraperOrchestrator:
         """Get orchestrator metrics"""
         uptime = None
         if self._metrics['start_time']:
-            uptime = (datetime.utcnow() - self._metrics['start_time']).total_seconds()
+            uptime = (datetime.now(timezone.utc) - self._metrics['start_time']).total_seconds()
         
         return {
             **self._metrics,

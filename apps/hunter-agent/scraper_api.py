@@ -16,7 +16,7 @@ Compatible with free resources and enterprise deployment
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from pathlib import Path
 import uuid
@@ -179,7 +179,7 @@ if HAS_FASTAPI:
         return {
             "status": "healthy",
             "orchestrator_running": orchestrator is not None and orchestrator._running,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     
     async def execute_scrape_job(job_id: str, targets: List[ScrapeTarget]):

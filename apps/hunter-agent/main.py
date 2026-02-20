@@ -21,7 +21,7 @@ import os
 import sys
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -31,7 +31,7 @@ def initialize_hunter():
     print("=" * 60)
     print("🎯 CONSTRUCT-OS HUNTER AGENT - ORLANDO FOCUS")
     print("=" * 60)
-    print(f"⏰ Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"⏰ Timestamp: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"🐍 Python: {sys.version.split()[0]}")
     print(f"📂 Working Dir: {os.getcwd()}")
     print(f"🎯 Target: Orlando, FL (100-mile radius)")
@@ -62,7 +62,7 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
             "location": "9800 International Dr, Orlando, FL 32819",
             "contact": "permits@orangecountyfl.net",
             "project_type": "Commercial",
-            "permit_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "permit_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "lat": 28.4255,
             "lng": -81.4688
         },
@@ -73,7 +73,7 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
             "location": "6900 Tavistock Lakes Blvd, Orlando, FL 32827",
             "contact": "development@tavistock.com",
             "project_type": "Medical Office",
-            "permit_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "permit_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "lat": 28.3852,
             "lng": -81.2765
         },
@@ -84,7 +84,7 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
             "location": "450 S Orange Ave, Orlando, FL 32801",
             "contact": "info@cnl.com",
             "project_type": "Mixed-Use Commercial",
-            "permit_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "permit_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "lat": 28.5383,
             "lng": -81.3792
         },
@@ -95,7 +95,7 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
             "location": "1750 Lee Rd, Winter Park, FL 32789",
             "contact": "projects@unicorpnational.com",
             "project_type": "Retail",
-            "permit_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "permit_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "lat": 28.5946,
             "lng": -81.3473
         },
@@ -106,7 +106,7 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
             "location": "3259 Progress Dr, Orlando, FL 32826",
             "contact": "realestate@ucf.edu",
             "project_type": "Educational/Research",
-            "permit_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "permit_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
             "lat": 28.5947,
             "lng": -81.1942
         }
@@ -258,7 +258,7 @@ def qualify_leads(leads: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         
         # Add qualification metadata
         lead['qualified'] = True
-        lead['qualification_date'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
+        lead['qualification_date'] = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         lead['min_value_check'] = f"PASS (${project_value:,} >= ${MIN_VALUE:,})"
         
         qualified.append(lead)
@@ -288,12 +288,12 @@ def save_leads_to_json(leads: List[Dict[str, Any]], output_dir: Path) -> Path:
     raw_leads_dir.mkdir(parents=True, exist_ok=True)
     
     # Create filename with today's date
-    today = datetime.utcnow().strftime('%Y-%m-%d')
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
     output_file = raw_leads_dir / f"{today}.json"
     
     # Save leads to JSON
     output_data = {
-        "scrape_date": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
+        "scrape_date": datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
         "location": "Orlando, FL (100-mile radius)",
         "total_leads": len(leads),
         "leads": leads
@@ -399,7 +399,7 @@ def generate_report(stats):
 
 def main():
     """Main execution flow for the Hunter Agent."""
-    start_time = datetime.utcnow()
+    start_time = datetime.now(timezone.utc)
     
     # Initialize
     initialize_hunter()
@@ -421,9 +421,9 @@ def main():
     create_github_issues(qualified)
     
     # Generate report
-    execution_time = (datetime.utcnow() - start_time).total_seconds()
+    execution_time = (datetime.now(timezone.utc) - start_time).total_seconds()
     stats = {
-        'scrape_date': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'scrape_date': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
         'location': 'Orlando, FL (100-mile radius)',
         'sources_scanned': 2,  # Mock permits + Google Maps
         'raw_leads': len(raw_leads),
@@ -437,7 +437,7 @@ def main():
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
     
-    log_file = output_dir / f"hunt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+    log_file = output_dir / f"hunt_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
     with open(log_file, 'w') as f:
         json.dump(stats, f, indent=2)
     print(f"📄 Execution log saved: {log_file}")

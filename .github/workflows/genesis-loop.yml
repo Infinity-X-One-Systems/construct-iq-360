@@ -280,14 +280,9 @@ jobs:
           python3 << 'EOF'
           import yaml
           import sys
+          import glob
           
-          workflows = [
-              '.github/workflows/heartbeat.yml',
-              '.github/workflows/hunter-cron.yml',
-              '.github/workflows/self-repair.yml',
-              '.github/workflows/auto-merge.yml',
-              '.github/workflows/genesis-loop.yml'
-          ]
+          workflows = sorted(glob.glob('.github/workflows/*.yml'))
           
           failed = []
           for workflow in workflows:

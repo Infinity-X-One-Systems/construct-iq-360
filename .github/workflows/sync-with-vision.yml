@@ -1,4 +1,4 @@
-name: 🔗 Optional Integration: Infinity Vision Commands
+name: "🔗 Optional Integration: Infinity Vision Commands"
 
 on:
   # Optional: Listen for commands from external systems like Infinity Vision
