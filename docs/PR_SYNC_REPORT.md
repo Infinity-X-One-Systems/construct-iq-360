@@ -1,6 +1,6 @@
 # PR Merge and Sync Validation Report
 
-Generated: 2026-02-20 03:35:25 UTC
+Generated: 2026-02-20 03:37:33 UTC
 Branch: main
 Protocol: Overseer-Prime - TAP Governance
 
@@ -10,7 +10,7 @@ Protocol: Overseer-Prime - TAP Governance
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| Merged PRs Audited | 7 | ALL COMPLETE |
+| Merged PRs Audited | 8 | ALL COMPLETE |
 | Remote/Local Sync | In Sync | IN SYNC |
 | Commits Ahead of Remote | 0 | OK |
 | Commits Behind Remote | 0 | OK |
@@ -22,8 +22,8 @@ Protocol: Overseer-Prime - TAP Governance
 
 | | SHA |
 |---|---|
-| Remote origin/main | `71b25979ccafb6dba9df3924a7981d1bbca83a94` |
-| Local main (at report time) | `71b25979ccafb6dba9df3924a7981d1bbca83a94` |
+| Remote origin/main | `e69f6180dae49789d5604c038af9357a1ae037a4` |
+| Local main (at report time) | `e69f6180dae49789d5604c038af9357a1ae037a4` |
 | Match | Identical |
 
 ### No Divergence
@@ -46,6 +46,7 @@ All PRs listed below were squash-merged into `main` via the Ouroboros Auto-Merge
 | #8 | Fix Genesis Loop: Add missing dependencies and auto-hea | Copilot | 2026-02-19 | `acce2ad0` | V Complete | None |
 | #9 | [WIP] Finalize all pull requests and resolve conflicts | Copilot | 2026-02-19 | `d2547a24` | V Complete | None |
 | #12 | Sync validation, Infinity Orchestrator dispatch bridge, | Copilot | 2026-02-20 | `71b25979` | V Complete | None |
+| #13 | fix: patch arbitrary file write CVE in download-artifac | Copilot | 2026-02-20 | `e69f6180` | V Complete | None |
 
 
 ---
@@ -90,6 +91,7 @@ Set input `corrective_action: auto-correct` on manual dispatch to auto-reset rem
 | #8 | `acce2ad0` | Fix Genesis Loop: Add missing dependencies and auto-healing | 2026-02-19 UTC |
 | #9 | `d2547a24` | [WIP] Finalize all pull requests and resolve conflicts | 2026-02-19 UTC |
 | #12 | `71b25979` | Sync validation, Infinity Orchestrator dispatch bridge, and  | 2026-02-20 UTC |
+| #13 | `e69f6180` | fix: patch arbitrary file write CVE in download-artifact, re | 2026-02-20 UTC |
 
 
 ---
