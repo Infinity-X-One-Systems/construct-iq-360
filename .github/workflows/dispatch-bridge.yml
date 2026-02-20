@@ -13,6 +13,8 @@ on:
       - run-invention-cycle
       - genesis-command
       - tap-override
+      - run-agent
+      - shadow-scrape
   workflow_dispatch:
     inputs:
       command:
@@ -164,6 +166,8 @@ jobs:
               'run-invention-cycle': { module: 'invention-engine',   sub: 'full-cycle'         },
               'genesis-command':     { module: 'genesis-loop',       sub: payload.phase || 'full' },
               'tap-override':        { module: 'tap-governor',       sub: 'policy-enforcement' },
+              'run-agent':           { module: 'biz-ops-agent',      sub: payload.agent || 'hunter' },
+              'shadow-scrape':       { module: 'biz-ops-agent',      sub: 'shadow'             },
             };
 
             const route = routingTable[cmd] || { module: 'genesis-loop', sub: 'full' };
@@ -274,6 +278,54 @@ jobs:
           elif module in ('invention-engine', 'genesis-loop', 'commander', 'media-synthesizer', 'tap-governor'):
               print(f'Module {module} / {sub} acknowledged.')
               print(f'Execution delegated to autonomous sub-system.')
+
+          elif module == 'biz-ops-agent':
+              # Run any biz-ops agent via agent_manager.py
+              # For shadow-scrape or run-agent commands
+              agent_name = payload.get('agent', sub)
+              action     = payload.get('action', 'run')
+              print(f'Biz-Ops agent dispatch: agent={agent_name}, action={action}')
+
+              import subprocess, sys as _sys
+              agent_manager = 'apps/biz-ops/agent_manager.py'
+              import os as _os
+              if _os.path.exists(agent_manager):
+                  proc = subprocess.run(
+                      [_sys.executable, agent_manager,
+                       '--agent', agent_name,
+                       '--action', action,
+                       '--payload', json.dumps(payload)],
+                      capture_output=True, text=True, timeout=300
+                  )
+                  print(proc.stdout[-3000:] if proc.stdout else '(no stdout)')  # 3000 chars keeps logs readable
+                  if proc.returncode != 0:
+                      print(f'Agent stderr: {proc.stderr[-500:]}')  # 500 chars captures key error message
+                      raise RuntimeError(f'Agent {agent_name}::{action} exited {proc.returncode}')
+                  print(f'Agent {agent_name}::{action} completed successfully.')
+              else:
+                  print(f'agent_manager.py not found at {agent_manager}. Skipping.')
+
+              # For shadow scrape: write job manifest so shadow-api can pick it up
+              if agent_name == 'shadow':
+                  _os.makedirs('data/shadow-jobs', exist_ok=True)
+                  job_file = f'data/shadow-jobs/{req_id}.json'
+                  with open(job_file, 'w') as jf:
+                      json.dump({
+                          'request_id': req_id,
+                          'action':     action,
+                          'urls':       payload.get('urls', []),
+                          'url':        payload.get('url', ''),
+                          'snapshot_url': payload.get('snapshot_url', ''),
+                          'selectors':  payload.get('selectors', {}),
+                          'form_fields': payload.get('form_fields', {}),
+                          'submit_selector': payload.get('submit_selector', ''),
+                          'result_selector': payload.get('result_selector', ''),
+                          'output_dir': payload.get('output_dir', 'data/snapshots'),
+                          'capture_html': payload.get('capture_html', True),
+                          'created':    now,
+                          'status':     'queued',
+                      }, jf, indent=2)
+                  print(f'Shadow job manifest written: {job_file}')
 
           else:
               print(f'Unknown module: {module}. Defaulting to genesis-loop/full.')

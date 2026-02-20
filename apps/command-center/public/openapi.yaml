@@ -1,31 +1,38 @@
 openapi: 3.0.0
 info:
   title: Construct-OS via Infinity Orchestrator
-  version: 2.0.0
+  version: 3.0.0
   description: >
-    Bridge for ChatGPT Custom GPT and Copilot Mobile to the Infinity Orchestrator
-    GitHub App (Infinity-X-One-Systems/infinity-orchestrator).
-    Commands are sent as workflow_dispatch to the Orchestrator's
-    autonomous-invention.yml runner, which relays them to
-    InfinityXOneSystems/construct-iq-360 via repository_dispatch.
+    Master system-control bridge for ChatGPT Custom GPT and Copilot Mobile
+    to the Infinity Orchestrator GitHub App (Infinity-X-One-Systems/infinity-orchestrator).
+    Commands route through the Orchestrator's autonomous-invention.yml runner,
+    which relays them to InfinityXOneSystems/construct-iq-360 via repository_dispatch.
+    Capabilities: generate construction documents, run all 6 biz-ops agents (Hunter,
+    Architect, Orator, Shadow, Commander, Vault), operate the Shadow headless browser
+    (scrape, form-fill, snapshot, extract), deploy, and run genesis self-optimization.
     No separate server required — the GitHub Actions runner IS the bridge.
 
 servers:
   - url: https://api.github.com
-    description: GitHub API
+    description: GitHub API (Infinity Orchestrator bridge)
 
 paths:
   /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches:
     post:
       operationId: triggerOrchestrator
-      summary: Send a goal to the Infinity Orchestrator runner
+      summary: Send any goal to the Infinity Orchestrator (natural-language master control)
       description: >
         Triggers a workflow_dispatch on the Infinity Orchestrator's
-        autonomous-invention.yml. The Orchestrator validates via the TAP
-        Protocol, runs multi-phase discovery/scoring/build, then relays
-        Construct-OS commands to InfinityXOneSystems/construct-iq-360.
-        Use natural language in the 'goal' field — the Orchestrator
-        translates goals into agent commands automatically.
+        autonomous-invention.yml. Use natural language in the 'goal' field.
+        The Orchestrator validates via TAP Protocol, then dispatches to
+        InfinityXOneSystems/construct-iq-360 dispatch-bridge.yml.
+        Works for all system operations: agent runs, document generation,
+        Shadow scraping, form fill, snapshots, deployment, genesis optimization.
+        Examples — "Run Shadow agent to scrape https://permits.example.com",
+        "Fill the permit search form at URL X with zip=32801",
+        "Take a snapshot of https://permits.example.com and extract all permit records",
+        "Run Hunter agent to find leads in Orlando metro area",
+        "Generate a residential bid for Smith Residence renovation".
       security:
         - bearerAuth: []
       requestBody:
@@ -47,6 +54,24 @@ paths:
                   ref: main
                   inputs:
                     goal: "Run the Hunter agent to scrape new construction permit leads in Orlando metro area and qualify any leads over $100K"
+              shadow_scrape:
+                summary: Run Shadow agent to scrape a URL
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Run Shadow headless agent to scrape https://permits.orangecountyfl.net/permit/search and extract all new residential permits over $100K"
+              shadow_form_fill:
+                summary: Shadow agent — fill and submit a web form
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Run Shadow agent to navigate to https://permits.example.com/search, fill in the form fields (zip: 32801, type: residential, value_min: 100000), click submit, and return all extracted permit records"
+              shadow_snapshot:
+                summary: Shadow agent — take a full-page snapshot
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Run Shadow agent to take a full-page screenshot and extract all text content from https://permits.orangecountyfl.net and save snapshot to data/snapshots/"
               generate_change_order:
                 summary: Create a change order document
                 value:
@@ -65,11 +90,17 @@ paths:
                   ref: main
                   inputs:
                     goal: "Deploy the construct-iq-360 Command Center to GitHub Pages"
+              system_status:
+                summary: Get full system status
+                value:
+                  ref: main
+                  inputs:
+                    goal: "Run Commander agent to return full system status: all workflow health, agent status, GitHub Pages deployment status, and recent dispatch log entries"
       responses:
         '204':
           description: Orchestrator runner triggered — workflow_dispatch accepted
         '401':
-          description: Authentication failed — token needs repo scope on Infinity-X-One-Systems org
+          description: Authentication failed — token needs Actions:Write on Infinity-X-One-Systems/infinity-orchestrator
         '403':
           description: Forbidden — token lacks write:actions permission on infinity-orchestrator
         '404':
@@ -79,14 +110,21 @@ paths:
 
   /repos/Infinity-X-One-Systems/infinity-orchestrator/dispatches:
     post:
-      operationId: dispatchInventionTrigger
-      summary: Send an invention_trigger event directly to the Orchestrator
+      operationId: systemControl
+      summary: Master system-control endpoint — dispatch any agent or shadow operation with structured payload
       description: >
-        Fires a repository_dispatch with event_type 'invention_trigger'
-        to the Infinity Orchestrator. The client_payload.goal field
-        contains natural-language instructions for the autonomous engine.
-        Use this as an alternative to workflow_dispatch when you need
-        to include structured payload data alongside the goal.
+        The master system-control endpoint for Construct-OS. Fires a repository_dispatch
+        with event_type 'invention_trigger' to the Infinity Orchestrator, which routes
+        to InfinityXOneSystems/construct-iq-360 dispatch-bridge.yml.
+        Use this for structured (non-natural-language) control of all system agents.
+        AGENT COMMANDS: Set command=run-agent, agent=hunter|architect|orator|shadow|commander|vault.
+        SHADOW SCRAPE: Set command=run-agent, agent=shadow, action=scrape, urls=[...], selectors={}.
+        SHADOW FORM-FILL: Set command=run-agent, agent=shadow, action=form-fill, url=..., form_fields={}.
+        SHADOW SNAPSHOT: Set command=run-agent, agent=shadow, action=snapshot, snapshot_url=..., output_dir=data/snapshots/.
+        SHADOW EXTRACT: Set command=run-agent, agent=shadow, action=extract, url=..., selectors={}.
+        DOCUMENT GENERATION: Set command=generate-document, doc_type=residential-bid|commercial-bid|...
+        DEPLOY: Set command=deploy-system.
+        GENESIS LOOP: Set command=genesis-command.
       security:
         - bearerAuth: []
       requestBody:
@@ -94,21 +132,99 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InventionTrigger'
+              $ref: '#/components/schemas/SystemControlPayload'
             examples:
-              construct_os_command:
-                summary: Route a Construct-OS agent command through the Orchestrator
+              shadow_scrape_permits:
+                summary: Shadow — scrape permit database
                 value:
                   event_type: invention_trigger
                   client_payload:
-                    goal: "Run architect agent to generate AIA G702 billing application for Westside TI project"
+                    goal: "Scrape permit data from the Orlando permit database"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: shadow
+                    action: scrape
+                    urls:
+                      - "https://permits.orangecountyfl.net/permit/search?type=building&value_min=100000"
+                    selectors:
+                      permit_number: ".permit-number"
+                      address: ".permit-address"
+                      value: ".permit-value"
+                      owner: ".permit-owner"
+              shadow_form_fill:
+                summary: Shadow — fill and submit a web form
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Fill the permit search form and extract results"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: shadow
+                    action: form-fill
+                    url: "https://permits.orangecountyfl.net/permit/search"
+                    form_fields:
+                      zip: "32801"
+                      permit_type: "residential"
+                      value_min: "100000"
+                    submit_selector: "#search-submit"
+                    result_selector: ".permit-results"
+              shadow_snapshot:
+                summary: Shadow — full-page snapshot
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Take a full-page snapshot of the permit database"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: shadow
+                    action: snapshot
+                    snapshot_url: "https://permits.orangecountyfl.net"
+                    output_dir: "data/snapshots"
+                    capture_html: true
+              run_hunter_agent:
+                summary: Run Hunter lead sniper agent
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Run Hunter agent for Orlando metro leads"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: hunter
+                    action: run
+              run_architect_billing:
+                summary: Run Architect AIA billing agent
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Generate AIA G702 billing application for Westside TI"
                     target_repo: InfinityXOneSystems/construct-iq-360
                     command: run-agent
                     agent: architect
                     action: billing
+                    project_value: 500000
+              generate_residential_bid:
+                summary: Generate a residential bid document
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Generate residential bid for Smith Residence"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: generate-document
+                    doc_type: residential-bid
+                    project_name: "Smith Residence Renovation"
+              vault_rehydrate:
+                summary: Vault — rehydrate enterprise memory
+                value:
+                  event_type: invention_trigger
+                  client_payload:
+                    goal: "Rehydrate Vault enterprise memory with recent context"
+                    target_repo: InfinityXOneSystems/construct-iq-360
+                    command: run-agent
+                    agent: vault
+                    action: rehydrate
       responses:
         '204':
-          description: invention_trigger dispatch accepted by Orchestrator
+          description: System-control dispatch accepted by Orchestrator
         '401':
           description: Authentication failed
         '422':
@@ -191,10 +307,14 @@ components:
               type: string
               description: >
                 Natural-language goal for the Orchestrator to execute.
-                Include the target system (construct-iq-360) and specific
-                action in the goal text. The Orchestrator translates this
+                Include the target system (construct-iq-360) and the desired
+                action. Shadow examples: "Run Shadow agent to scrape
+                https://permits.orangecountyfl.net and extract all residential
+                permits", "Fill the permit search form at URL X with
+                zip=32801 and return results", "Take a full-page snapshot
+                of https://example.com". The Orchestrator translates goals
                 into agent commands automatically.
-              example: "Generate a residential bid document for Smith Residence renovation in construct-iq-360"
+              example: "Generate a residential bid for Smith Residence renovation — or: Run Shadow agent to scrape https://permits.example.com"
             dry_run:
               type: string
               description: Set to 'true' to plan without executing mutations
@@ -205,7 +325,7 @@ components:
               description: Comma-separated phases to skip (discovery, scoring, sandbox, validation, deploy)
               example: ""
 
-    InventionTrigger:
+    SystemControlPayload:
       type: object
       required:
         - event_type
@@ -217,18 +337,26 @@ components:
             - invention_trigger
         client_payload:
           type: object
-          description: Structured payload forwarded to the Orchestrator runner
+          description: >
+            Master system-control payload. Supports all 6 biz-ops agents
+            and all Shadow headless browser operations. Set command=run-agent
+            and agent=shadow for headless browser control. All operations
+            are governance-gated, rate-limited, and audit-logged.
           properties:
             goal:
               type: string
-              description: Natural-language goal for the Orchestrator
+              description: Natural-language description of what to accomplish
             target_repo:
               type: string
               description: Target repository for cross-repo dispatch
+              default: InfinityXOneSystems/construct-iq-360
               example: InfinityXOneSystems/construct-iq-360
             command:
               type: string
-              description: Construct-OS command type
+              description: >
+                Construct-OS command type. Use 'run-agent' for all biz-ops
+                agent operations including Shadow scraping, form-fill, and
+                snapshots. Use 'generate-document' for construction docs.
               enum:
                 - generate-document
                 - build-project
@@ -237,13 +365,79 @@ components:
                 - genesis-command
                 - run-agent
                 - run-invention-cycle
+                - shadow-scrape
             agent:
               type: string
-              description: Biz-Ops agent to run
+              description: >
+                Biz-Ops agent to run (required when command=run-agent).
+                Use 'shadow' for all headless browser operations.
               enum: [hunter, architect, orator, shadow, commander, vault]
             action:
               type: string
-              description: Agent action to perform
+              description: >
+                Agent action. For shadow: 'scrape', 'form-fill',
+                'snapshot', 'extract', 'navigate'.
+              enum:
+                - run
+                - estimate
+                - billing
+                - generate
+                - scrape
+                - form-fill
+                - snapshot
+                - extract
+                - navigate
+                - rehydrate
+                - archive
+                - status
+                - deploy
+            urls:
+              type: array
+              description: Target URLs for shadow scrape operations
+              items:
+                type: string
+              example: ["https://permits.orangecountyfl.net/permit/search"]
+            url:
+              type: string
+              description: Single URL for form-fill, snapshot, or extract
+              example: "https://permits.orangecountyfl.net/permit/search"
+            snapshot_url:
+              type: string
+              description: URL to snapshot (action=snapshot)
+              example: "https://permits.orangecountyfl.net"
+            selectors:
+              type: object
+              description: CSS selectors for data extraction
+              additionalProperties:
+                type: string
+              example:
+                permit_number: ".permit-number"
+                address: ".permit-address"
+                value: ".permit-value"
+            form_fields:
+              type: object
+              description: Form field key-value pairs (action=form-fill)
+              additionalProperties:
+                type: string
+              example:
+                zip: "32801"
+                permit_type: "residential"
+            submit_selector:
+              type: string
+              description: CSS selector for form submit button
+              example: "#search-submit"
+            result_selector:
+              type: string
+              description: CSS selector for results container after submit
+              example: ".permit-results"
+            output_dir:
+              type: string
+              description: Directory to save snapshot output
+              default: "data/snapshots"
+            capture_html:
+              type: boolean
+              description: Also capture HTML alongside PNG snapshot
+              default: true
             doc_type:
               type: string
               description: Document template for generate-document commands
@@ -258,17 +452,24 @@ components:
                 - site-safety-checklist
                 - lead-qualification-runbook
                 - bid-preparation-runbook
+            project_name:
+              type: string
+              description: Project name for document generation
+              example: "Smith Residence Renovation"
+            project_value:
+              type: number
+              description: Project dollar value for estimation
+              example: 500000
           additionalProperties: true
 
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-      bearerFormat: GitHub PAT or GitHub App Installation Token
+      bearerFormat: GitHub Fine-Grained PAT
       description: >
-        Authentication token with repo scope on the Infinity-X-One-Systems org.
-        Option A — GitHub PAT (Fine-Grained): create at
-        https://github.com/settings/tokens with repository access to
-        Infinity-X-One-Systems/infinity-orchestrator and actions:write permission.
-        Option B — GitHub App Installation Token: use the Infinity Orchestrator
-        GitHub App installation credentials for the InfinityXOneSystems org.
+        Fine-Grained PAT with Actions: Read & Write on
+        Infinity-X-One-Systems/infinity-orchestrator.
+        Create at https://github.com/settings/tokens.
+        Repository access: Infinity-X-One-Systems/infinity-orchestrator.
+        Permission: Actions: Read & Write.

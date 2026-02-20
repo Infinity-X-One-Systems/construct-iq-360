@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { getToken } from '@/lib/auth';
 
-type Tab = 'chatgpt' | 'copilot' | 'orchestrator' | 'runner' | 'plugin';
+type Tab = 'chatgpt' | 'copilot' | 'orchestrator' | 'runner' | 'shadow' | 'plugin';
 
 const SYSTEM_PROMPT = `You are the AI assistant for Construct-OS, an autonomous construction intelligence platform by Infinity X One Systems.
 
@@ -20,26 +20,43 @@ ORCHESTRATION CHAIN:
     -> dispatch-bridge.yml routes to agent runner
 
 TO TRIGGER AN ACTION: use the triggerOrchestrator action with a natural-language goal.
-Example: "Generate a residential bid for Smith Residence renovation in Orlando FL"
-Example: "Run the Hunter agent to find new leads in Orlando metro area"
-Example: "Deploy the Command Center to GitHub Pages"
+TO TRIGGER STRUCTURED AGENT COMMANDS: use systemControl with command=run-agent, agent=shadow|hunter|architect|orator|commander|vault.
 
 AGENTS (6 autonomous agents):
 - Hunter: Lead discovery (Orlando metro permit databases + Google Maps)
 - Architect: CSI MasterFormat estimation + AIA G702/G703 billing + Vertex AI AutoML
 - Orator: Document generation (11+ construction templates)
-- Shadow: Headless browser automation (form fill, click, scroll, snapshot) + REST API
+- Shadow: Headless browser automation — form fill, click, type, scroll, snapshot, extract, navigate. REST API at port 8080. Governance: rate limiting, robots.txt respected, full audit logging.
 - Commander: GitHub Pages deployment + workflow health + Genesis Loop
 - Vault: Enterprise memory, context rehydration, audit logging
 
+SHADOW AGENT CAPABILITIES (use systemControl with agent=shadow):
+- action=scrape: Extract data from URL(s) using CSS selectors
+  Example goal: "Run Shadow agent to scrape https://permits.orangecountyfl.net and extract permit_number, address, value selectors"
+- action=form-fill: Navigate to URL, fill form fields, submit, extract results
+  Example goal: "Run Shadow agent to fill the permit search form at https://permits.orangecountyfl.net with zip=32801 and return results"
+- action=snapshot: Full-page PNG screenshot + HTML capture, saved to data/snapshots/
+  Example goal: "Run Shadow agent to take a full-page snapshot of https://permits.orangecountyfl.net"
+- action=extract: Extract structured data from a page using selectors
+- action=navigate: Navigate and return page state
+Shadow governance: every action audit-logged, rate-limited (1000ms), max 100 instances, robots.txt respected.
+
+MASTER SYSTEM CONTROL:
+Use systemControl endpoint with any command to operate the entire system:
+- command=run-agent + agent=shadow + action=scrape|form-fill|snapshot|extract
+- command=run-agent + agent=hunter|architect|orator|commander|vault
+- command=generate-document + doc_type=residential-bid|commercial-bid|change-order|...
+- command=deploy-system
+- command=genesis-command
+
 DISPATCH COMMANDS (routed via Infinity Orchestrator):
-- generate-document, build-project, create-agent, deploy-system, genesis-command, run-agent
+- generate-document, build-project, create-agent, deploy-system, genesis-command, run-agent, shadow-scrape
 
 CRM STATUSES: new > contacted > proposal-sent > negotiating > won/lost
 TEMPLATES: residential-bid, commercial-bid, ti-bid, change-order, subcontractor-agreement, lien-waiver, pre-construction-checklist, site-safety-checklist, lead-qualification-runbook, bid-preparation-runbook
 BILLING: AIA G702/G703 style, retainage 10% to 5% at 50% completion, CSV export
 
-AUTH: Your token needs repo scope on Infinity-X-One-Systems/infinity-orchestrator (not construct-iq-360 directly).`;
+AUTH: Your token needs Actions:Write on Infinity-X-One-Systems/infinity-orchestrator.`;
 
 interface Message {
   role: 'user' | 'assistant';
@@ -55,16 +72,35 @@ const ORCHESTRATOR_DISPATCH_COMMANDS = [
   { label: 'Deploy Command Center', goal: 'Deploy the construct-iq-360 Command Center to GitHub Pages via the Commander agent' },
 ];
 
+const SHADOW_DISPATCH_COMMANDS = [
+  {
+    label: 'Scrape Permit Database',
+    goal: 'Run Shadow headless agent to scrape https://permits.orangecountyfl.net/permit/search and extract all new residential and commercial construction permits over $100K — return permit_number, address, owner, value for each record',
+  },
+  {
+    label: 'Form Fill — Permit Search',
+    goal: 'Run Shadow agent to navigate to https://permits.orangecountyfl.net/permit/search, fill in zip=32801, permit_type=building, value_min=100000, click the submit button, and return all extracted permit records from the results table',
+  },
+  {
+    label: 'Snapshot — Permit Portal',
+    goal: 'Run Shadow agent to take a full-page screenshot and capture all HTML content from https://permits.orangecountyfl.net — save PNG and HTML to data/snapshots/ with timestamp',
+  },
+  {
+    label: 'Extract — Lead Data',
+    goal: 'Run Shadow agent to extract structured lead data from https://permits.orangecountyfl.net using selectors: permit_number=.permit-number, address=.permit-address, value=.permit-value, owner=.permit-owner',
+  },
+];
+
 const GOAL_PREVIEW_LENGTH = 60;
 
 const OPENAPI_SPEC = `openapi: 3.0.0
 info:
   title: Construct-OS via Infinity Orchestrator
-  version: 2.0.0
+  version: 3.0.0
   description: >
-    Bridge to the Infinity Orchestrator GitHub App.
-    ChatGPT/Copilot send goals here; the Orchestrator
-    routes commands to InfinityXOneSystems/construct-iq-360.
+    Master system-control bridge — ChatGPT/Copilot send goals or structured
+    commands here; the Infinity Orchestrator routes them to Construct-OS.
+    Includes Shadow headless browser control (scrape, form-fill, snapshot).
 
 servers:
   - url: https://api.github.com
@@ -73,7 +109,11 @@ paths:
   /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches:
     post:
       operationId: triggerOrchestrator
-      summary: Send a goal to the Infinity Orchestrator runner
+      summary: Send any goal to the Orchestrator (natural-language master control)
+      description: >
+        Use natural language. Shadow examples: "Run Shadow agent to scrape
+        https://permits.example.com", "Fill the permit search form at URL X
+        with zip=32801", "Take a snapshot of https://example.com".
       security:
         - bearerAuth: []
       requestBody:
@@ -100,8 +140,12 @@ paths:
 
   /repos/Infinity-X-One-Systems/infinity-orchestrator/dispatches:
     post:
-      operationId: dispatchInventionTrigger
-      summary: Send invention_trigger dispatch to Orchestrator
+      operationId: systemControl
+      summary: Master system-control endpoint — structured agent + shadow commands
+      description: >
+        Structured control for all agents. For Shadow browser operations:
+        set command=run-agent, agent=shadow, then action=scrape|form-fill|snapshot|extract.
+        Supports all 6 biz-ops agents and all construction workflows.
       security:
         - bearerAuth: []
       requestBody:
@@ -120,13 +164,45 @@ paths:
                   properties:
                     goal:
                       type: string
-                    target_repo:
-                      type: string
                     command:
                       type: string
+                      enum: [generate-document, run-agent, deploy-system, genesis-command, shadow-scrape]
+                    agent:
+                      type: string
+                      enum: [hunter, architect, orator, shadow, commander, vault]
+                    action:
+                      type: string
+                      enum: [run, scrape, form-fill, snapshot, extract, navigate, generate, billing, rehydrate, status]
+                    urls:
+                      type: array
+                      items:
+                        type: string
+                    url:
+                      type: string
+                    snapshot_url:
+                      type: string
+                    selectors:
+                      type: object
+                      additionalProperties:
+                        type: string
+                    form_fields:
+                      type: object
+                      additionalProperties:
+                        type: string
+                    submit_selector:
+                      type: string
+                    result_selector:
+                      type: string
+                    output_dir:
+                      type: string
+                    doc_type:
+                      type: string
+                    project_name:
+                      type: string
+                  additionalProperties: true
       responses:
         '204':
-          description: Dispatch accepted
+          description: System-control dispatch accepted
 
   /repos/Infinity-X-One-Systems/infinity-orchestrator/actions/runs:
     get:
@@ -154,18 +230,16 @@ components:
       type: http
       scheme: bearer
       description: >
-        GitHub token with repo scope on
+        Fine-Grained PAT with Actions: Read & Write on
         Infinity-X-One-Systems/infinity-orchestrator.
-        Create a Fine-Grained PAT at github.com/settings/tokens
-        with repository access to Infinity-X-One-Systems/infinity-orchestrator
-        and Read & Write: Actions permission.`;
+        Create at github.com/settings/tokens.`;
 
 const PLUGIN_MANIFEST = `{
   "schema_version": "v1",
   "name_for_model": "construct_os_orchestrator",
   "name_for_human": "Construct-OS via Infinity Orchestrator",
-  "description_for_model": "Send natural-language goals to the Infinity Orchestrator GitHub App (Infinity-X-One-Systems/infinity-orchestrator). The Orchestrator validates via TAP Protocol, runs multi-agent phases, then dispatches to Construct-OS (InfinityXOneSystems/construct-iq-360). Use triggerOrchestrator for goals like 'generate a residential bid' or 'run the Hunter agent'. Auth: GitHub token with repo scope on Infinity-X-One-Systems/infinity-orchestrator.",
-  "description_for_human": "Control Construct-OS via the Infinity Orchestrator: run agents, generate construction documents, manage leads and billing.",
+  "description_for_model": "Master system-control for Construct-OS via Infinity Orchestrator (Infinity-X-One-Systems/infinity-orchestrator). Use triggerOrchestrator for natural-language goals. Use systemControl for structured agent commands — including Shadow headless browser (scrape, form-fill, snapshot, extract). Supports all 6 biz-ops agents: Hunter (leads), Architect (billing/estimation), Orator (documents), Shadow (browser automation), Commander (deployment), Vault (memory). Auth: Fine-Grained PAT with Actions:Write on Infinity-X-One-Systems/infinity-orchestrator.",
+  "description_for_human": "Command the full Construct-OS system: run agents, scrape with Shadow headless browser, generate construction documents, manage leads and billing.",
   "auth": {
     "type": "user_http",
     "authorization_type": "bearer"
@@ -245,6 +319,7 @@ export default function AiHubPage() {
   const [dispatchLoading, setDispatchLoading] = useState(false);
   const [copiedSpec, setCopiedSpec] = useState(false);
   const [copiedManifest, setCopiedManifest] = useState(false);
+  const [shadowGoal, setShadowGoal] = useState('');
 
   const token = getToken();
 
@@ -324,6 +399,7 @@ export default function AiHubPage() {
     { id: 'copilot', label: 'Copilot Mobile' },
     { id: 'orchestrator', label: 'Orchestrator' },
     { id: 'runner', label: 'Runner' },
+    { id: 'shadow', label: 'Shadow Agent' },
     { id: 'plugin', label: 'Plugin Adapter' },
   ];
 
@@ -623,7 +699,7 @@ export default function AiHubPage() {
                   className="text-left bg-dark-surface border border-neon-green/10 rounded p-4 hover:border-neon-green/30 hover:bg-neon-green/5 transition-all disabled:opacity-40 group"
                 >
                   <div className="text-xs font-bold text-white uppercase tracking-widest mb-1 group-hover:text-neon-green transition-colors">{cmd.label}</div>
-                  <div className="text-xs text-gray-700 mt-2 font-mono truncate">{cmd.goal.substring(0, GOAL_PREVIEW_LENGTH)}...</div>
+                  <div className="text-xs text-gray-500 mt-2 font-mono truncate">{cmd.goal.substring(0, GOAL_PREVIEW_LENGTH)}...</div>
                 </button>
               ))}
             </div>
@@ -638,11 +714,175 @@ export default function AiHubPage() {
                 <div className="ml-8">↓  repository_dispatch: invention_trigger</div>
                 <div className="ml-8"><span className="text-white">InfinityXOneSystems/construct-iq-360</span>  →  dispatch-bridge.yml</div>
                 <div className="ml-12 text-gray-600">generate-document  →  Orator / document-pipeline.yml</div>
-                <div className="ml-12 text-gray-600">run-agent          →  Hunter-cron / biz-ops agents</div>
+                <div className="ml-12 text-gray-600">run-agent          →  biz-ops/agent_manager.py  (Hunter / Architect / Shadow / Vault)</div>
+                <div className="ml-12 text-gray-600">shadow-scrape      →  Shadow headless agent  (form-fill, snapshot, extract)</div>
                 <div className="ml-12 text-gray-600">genesis-command    →  genesis-loop.yml</div>
                 <div className="ml-12 text-gray-600">deploy-system      →  deploy-command-center.yml</div>
                 <div className="ml-8">↓  Output committed to data/ or docs/</div>
                 <div className="ml-4"><span className="text-neon-green">Vault</span>  archives to data/dispatch-log/commands.jsonl</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Shadow Agent */}
+        {tab === 'shadow' && (
+          <div className="px-8 py-6 max-w-3xl space-y-6">
+            <div>
+              <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-1">Shadow Headless Agent — System Control</h2>
+              <p className="text-xs text-gray-500">
+                ChatGPT and Copilot can command the Shadow headless browser agent directly through the Infinity Orchestrator.
+                All operations route through <span className="text-white font-mono">dispatch-bridge.yml</span> → <span className="text-white font-mono">biz-ops/agent_manager.py</span>.
+                Shadow REST API: <span className="text-neon-green font-mono">apps/hunter-agent/scraper_api.py</span> (port 8080).
+              </p>
+            </div>
+
+            <div className="bg-dark-surface border border-neon-green/10 rounded p-4">
+              <div className="font-mono text-xs text-gray-400 space-y-0.5 leading-relaxed">
+                <div><span className="text-neon-green">ChatGPT / Copilot Mobile</span></div>
+                <div className="ml-4">↓  triggerOrchestrator (goal: natural language)  OR  systemControl (structured)</div>
+                <div className="ml-4"><span className="text-white">Infinity Orchestrator</span>  →  autonomous-invention.yml</div>
+                <div className="ml-8">↓  repository_dispatch: run-agent / shadow-scrape</div>
+                <div className="ml-8"><span className="text-white">dispatch-bridge.yml</span>  →  biz-ops-agent module</div>
+                <div className="ml-12"><span className="text-white">agent_manager.py</span>  →  run_shadow(action, payload)</div>
+                <div className="ml-16 text-gray-600">scraper_orchestrator.py  →  Playwright browser pool</div>
+                <div className="ml-16 text-gray-600">scraper_api.py  →  REST API (port 8080)</div>
+                <div className="ml-12">Shadow job manifest  →  data/shadow-jobs/{'{request_id}'}.json</div>
+                <div className="ml-8">↓  Results committed to data/  |  Snapshot → data/snapshots/</div>
+                <div className="ml-4"><span className="text-neon-green">Vault</span>  audit logs to data/dispatch-log/commands.jsonl</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              {[
+                { label: 'Capabilities', items: ['Form fill and submit', 'Click, type, scroll, keyboard interaction', 'Full-page screenshot (PNG) + HTML capture', 'Structured data extraction via CSS/XPath selectors', 'Stealth mode with user-agent rotation', 'Parallel instance pool (1–100 browsers)', 'Auto-retry with exponential backoff', 'REST API wrapper (FastAPI on port 8080)', 'Governance audit logging to data/dispatch-log/'] },
+                { label: 'Governance Guardrails', items: ['robots.txt checked before every scrape', 'Rate limiting enforced (default: 1000ms between requests)', 'Every action audit-logged with request ID and timestamp', 'No credential storage in code — all via env secrets', 'User-agent rotation enabled by default', 'Max concurrent instances capped by config (default: 10)', 'Snapshot output sanitized — no PII in filenames'] },
+              ].map(section => (
+                <div key={section.label} className="bg-dark-surface border border-neon-green/10 rounded p-4">
+                  <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">{section.label}</h3>
+                  <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
+                    {section.items.map(item => <li key={item}>{item}</li>)}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Quick Dispatch — Shadow Commands via Orchestrator</h3>
+              {!token && (
+                <div className="border border-red-400/20 rounded p-3 text-xs text-red-400 bg-red-400/5 mb-3">
+                  No GitHub token. Sign in to dispatch shadow commands.
+                </div>
+              )}
+              {dispatchStatus && (
+                <div className={`border rounded p-3 text-xs mb-3 ${
+                  dispatchStatus.toLowerCase().includes('error')
+                    ? 'border-red-400/20 text-red-400 bg-red-400/5'
+                    : 'border-neon-green/20 text-neon-green bg-neon-green/5'
+                }`}>{dispatchStatus}</div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                {SHADOW_DISPATCH_COMMANDS.map((cmd, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setShadowGoal(cmd.goal);
+                      dispatchViaOrchestrator(cmd);
+                    }}
+                    disabled={dispatchLoading || !token}
+                    className="text-left bg-dark-surface border border-neon-green/10 rounded p-4 hover:border-neon-green/30 hover:bg-neon-green/5 transition-all disabled:opacity-40 group"
+                  >
+                    <div className="text-xs font-bold text-white uppercase tracking-widest mb-1 group-hover:text-neon-green transition-colors">{cmd.label}</div>
+                    <div className="text-xs text-gray-500 mt-2 font-mono truncate">{cmd.goal.substring(0, GOAL_PREVIEW_LENGTH)}...</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Custom Shadow Goal</h3>
+              <p className="text-xs text-gray-500 mb-3">Send a custom natural-language goal directly to the Shadow agent via the Infinity Orchestrator runner.</p>
+              <textarea
+                value={shadowGoal}
+                onChange={e => setShadowGoal(e.target.value)}
+                rows={3}
+                placeholder="Run Shadow agent to scrape https://example.com and extract..."
+                className="w-full bg-black border border-neon-green/10 rounded px-3 py-2 text-white text-xs font-mono placeholder-gray-700 focus:outline-none focus:border-neon-green/40 resize-none mb-3"
+              />
+              <button
+                onClick={() => dispatchViaOrchestrator({ label: 'Custom Shadow Goal', goal: shadowGoal })}
+                disabled={dispatchLoading || !token || !shadowGoal.trim()}
+                className="px-5 py-2 bg-neon-green text-black text-xs font-bold uppercase tracking-widest rounded hover:bg-white transition-colors disabled:opacity-40"
+              >
+                Dispatch via Orchestrator
+              </button>
+            </div>
+
+            <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">Shadow API Endpoints (scraper_api.py)</h3>
+              <div className="space-y-2">
+                {[
+                  { method: 'POST', path: '/orchestrator/start', desc: 'Start the Playwright browser instance pool' },
+                  { method: 'POST', path: '/orchestrator/stop', desc: 'Stop and cleanup all browser instances' },
+                  { method: 'GET',  path: '/orchestrator/metrics', desc: 'Instance pool metrics and success rate' },
+                  { method: 'POST', path: '/scrape/submit', desc: 'Submit a scrape job (returns job_id)' },
+                  { method: 'GET',  path: '/scrape/results/{job_id}', desc: 'Get results for a completed scrape job' },
+                  { method: 'GET',  path: '/health', desc: 'Health check and orchestrator status' },
+                ].map(ep => (
+                  <div key={ep.path} className="flex items-center space-x-3 bg-black rounded p-2.5">
+                    <span className={`text-xs font-bold font-mono w-10 shrink-0 ${ep.method === 'GET' ? 'text-neon-green' : 'text-amber-400'}`}>{ep.method}</span>
+                    <span className="text-xs font-mono text-white flex-1">{ep.path}</span>
+                    <span className="text-xs text-gray-600 text-right">{ep.desc}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-600 mt-3 font-mono">Run locally: <span className="text-neon-green">cd apps/hunter-agent && python scraper_api.py</span></p>
+              <p className="text-xs text-gray-600 font-mono">Docker: <span className="text-neon-green">docker-compose up shadow-api</span> (port 8080)</p>
+            </div>
+
+            <div className="bg-dark-surface border border-neon-green/10 rounded p-5">
+              <h3 className="text-xs font-bold text-neon-green uppercase tracking-widest mb-3">ChatGPT — systemControl Shadow Examples</h3>
+              <p className="text-xs text-gray-500 mb-3">Use the <span className="text-white font-mono">systemControl</span> action in your Custom GPT for structured shadow commands:</p>
+              <div className="space-y-3">
+                {[
+                  {
+                    title: 'Scrape with selectors',
+                    code: `{
+  "event_type": "invention_trigger",
+  "client_payload": {
+    "goal": "Scrape permit data",
+    "command": "run-agent",
+    "agent": "shadow",
+    "action": "scrape",
+    "urls": ["https://permits.orangecountyfl.net/search"],
+    "selectors": {
+      "permit_number": ".permit-number",
+      "value": ".permit-value"
+    }
+  }
+}`,
+                  },
+                  {
+                    title: 'Form fill and extract',
+                    code: `{
+  "event_type": "invention_trigger",
+  "client_payload": {
+    "goal": "Fill permit search form",
+    "command": "run-agent",
+    "agent": "shadow",
+    "action": "form-fill",
+    "url": "https://permits.example.com/search",
+    "form_fields": { "zip": "32801", "type": "residential" },
+    "submit_selector": "#search-submit"
+  }
+}`,
+                  },
+                ].map(ex => (
+                  <div key={ex.title}>
+                    <div className="text-xs text-gray-500 uppercase tracking-widest mb-1">{ex.title}</div>
+                    <pre className="bg-black rounded p-3 text-xs text-gray-400 font-mono overflow-x-auto whitespace-pre">{ex.code}</pre>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
