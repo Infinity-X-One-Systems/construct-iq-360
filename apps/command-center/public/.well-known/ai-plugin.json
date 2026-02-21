@@ -1,0 +1,18 @@
+{
+  "schema_version": "v1",
+  "name_for_model": "construct_os_orchestrator",
+  "name_for_human": "Construct-OS via Infinity Orchestrator",
+  "description_for_model": "Send natural-language goals to the Infinity Orchestrator GitHub App (Infinity-X-One-Systems/infinity-orchestrator). The Orchestrator validates via TAP Protocol, runs multi-agent discovery/scoring/build phases, then dispatches commands to the Construct-OS platform (InfinityXOneSystems/construct-iq-360). Use triggerOrchestrator to send goals like 'generate a residential bid for Smith Residence' or 'run the Hunter lead sniper agent'. Use dispatchInventionTrigger for structured cross-repo commands. Use listOrchestratorRuns or listConstructRuns to check runner status. Authentication requires a GitHub token with repo access to Infinity-X-One-Systems/infinity-orchestrator.",
+  "description_for_human": "Control Construct-OS via the Infinity Orchestrator: generate construction documents, run AI agents (Hunter, Architect, Orator, Shadow), manage leads, billing, and deployments — all through the Infinity Orchestrator GitHub App runner.",
+  "auth": {
+    "type": "user_http",
+    "authorization_type": "bearer"
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://infinityxonesystems.github.io/construct-iq-360/openapi.yaml"
+  },
+  "logo_url": "https://infinityxonesystems.github.io/construct-iq-360/icons/icon-192.png",
+  "contact_email": "admin@infinityxonesystems.com",
+  "legal_info_url": "https://github.com/Infinity-X-One-Systems/infinity-orchestrator"
+}

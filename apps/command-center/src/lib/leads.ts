@@ -42,7 +42,8 @@ export function formatCurrency(value: number): string {
 export async function loadLeads(): Promise<Lead[]> {
   try {
     // In production (static export), load from public directory
-    const response = await fetch('/data/raw-leads/2026-02-19.json');
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const response = await fetch(`${basePath}/data/raw-leads/2026-02-19.json`);
     if (response.ok) {
       const data: LeadData = await response.json();
       return data.leads || [];

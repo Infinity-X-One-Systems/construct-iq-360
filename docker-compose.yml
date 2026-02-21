@@ -1,0 +1,123 @@
+version: "3.9"
+
+# Construct-OS Docker Compose
+# Runs the full agent stack locally or in a self-hosted runner environment.
+# All secrets via environment variables — never hardcoded.
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose up shadow-api  # Start only the Shadow headless API
+#   docker compose logs -f hunter # Follow Hunter agent logs
+
+services:
+
+  # ─── COMMAND CENTER ─────────────────────────────────────────────────────────
+  command-center:
+    build:
+      context: ./apps/command-center
+      dockerfile: Dockerfile
+    container_name: construct-os-command-center
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_BASE_PATH=
+    networks:
+      - infinity-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── SHADOW HEADLESS API ─────────────────────────────────────────────────────
+  shadow-api:
+    build:
+      context: ./apps/hunter-agent
+      dockerfile: Dockerfile.shadow
+    container_name: construct-os-shadow
+    ports:
+      - "8080:8080"
+    environment:
+      - SHADOW_MAX_INSTANCES=${SHADOW_MAX_INSTANCES:-10}
+      - SHADOW_HEADLESS=${SHADOW_HEADLESS:-true}
+      - SHADOW_RATE_LIMIT_MS=${SHADOW_RATE_LIMIT_MS:-1000}
+      - SHADOW_TIMEOUT=${SHADOW_TIMEOUT:-30}
+    volumes:
+      - ./data/snapshots:/app/data/snapshots
+      - ./data/raw-leads:/app/data/raw-leads
+    networks:
+      - infinity-mesh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── BIZ-OPS AGENT MANAGER ───────────────────────────────────────────────────
+  biz-ops:
+    build:
+      context: ./apps/biz-ops
+      dockerfile: Dockerfile
+    container_name: construct-os-biz-ops
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - VERTEX_AI_PROJECT=${VERTEX_AI_PROJECT}
+      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+    volumes:
+      - ./data:/app/data
+      - ./gcp-key.json:/app/credentials/gcp-key.json:ro
+    networks:
+      - infinity-mesh
+    depends_on:
+      - shadow-api
+    restart: unless-stopped
+
+  # ─── VAULT MEMORY SERVICE ────────────────────────────────────────────────────
+  vault:
+    build:
+      context: ./apps/biz-ops
+      dockerfile: Dockerfile
+    container_name: construct-os-vault
+    command: ["python", "-m", "memory.vault_memory", "--serve"]
+    environment:
+      - VERTEX_AI_PROJECT=${VERTEX_AI_PROJECT}
+      - VERTEX_AI_LOCATION=${VERTEX_AI_LOCATION:-us-central1}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-key.json
+    volumes:
+      - ./data/memory:/app/data/memory
+      - ./data/dispatch-log:/app/data/dispatch-log
+      - ./gcp-key.json:/app/credentials/gcp-key.json:ro
+    ports:
+      - "8090:8090"
+    networks:
+      - infinity-mesh
+    restart: unless-stopped
+
+  # ─── REDIS (Job Queue) ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: construct-os-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - infinity-mesh
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+# ─── NETWORKS ─────────────────────────────────────────────────────────────────
+networks:
+  infinity-mesh:
+    name: infinity-mesh
+    driver: bridge
+
+# ─── VOLUMES ──────────────────────────────────────────────────────────────────
+volumes:
+  redis-data:
+    driver: local

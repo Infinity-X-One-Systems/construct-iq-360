@@ -1,0 +1,40 @@
+{
+  "id": "vault",
+  "name": "Vault",
+  "role": "Memory & Knowledge Agent",
+  "version": "2.0.0",
+  "description": "Enterprise-grade memory system. Maintains agent context, lead history, decision logs, and system state. Rehydrates agents with domain knowledge before each run. Backs all data to GitHub as the immutable audit trail. Supports semantic search via Vertex AI embeddings.",
+  "source": "apps/biz-ops/memory/vault_memory.py",
+  "workflow": ".github/workflows/sync-validator.yml",
+  "llm": {
+    "provider": "vertex-ai",
+    "model": "text-embedding-004",
+    "role": "Semantic search index, context relevance scoring"
+  },
+  "memory_backends": {
+    "primary": "data/memory/{namespace}/index.jsonl (append-only)",
+    "state": "data/memory/{namespace}/state.json (mutable snapshot)",
+    "dispatch_log": "data/dispatch-log/commands.jsonl (global audit)"
+  },
+  "namespaces": ["hunter", "architect", "orator", "shadow", "commander", "global"],
+  "skills": [
+    "Context rehydration (last N entries for LLM context window)",
+    "Keyword and semantic search across stored entries",
+    "Append-only audit logging (immutable)",
+    "Cross-agent knowledge sharing via global namespace",
+    "State snapshots for fast reads",
+    "Dispatch log archiving",
+    "LLM context string builder (build_llm_context)"
+  ],
+  "rehydrate": {
+    "max_entries": 50,
+    "format": "structured JSON + LLM context string"
+  },
+  "governance": {
+    "immutable_audit": true,
+    "append_only_writes": true,
+    "no_pii_in_memory": true,
+    "backed_to_github": true
+  },
+  "trigger": "Called by all agents before and after each run"
+}

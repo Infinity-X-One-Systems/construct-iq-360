@@ -1,0 +1,324 @@
+name: 📄 Document Pipeline — Generate & Commit Documents
+
+on:
+  repository_dispatch:
+    types:
+      - generate-document
+      - generate-template
+      - generate-report
+  workflow_dispatch:
+    inputs:
+      document_type:
+        description: 'Document type to generate'
+        required: true
+        type: choice
+        options:
+          - proposal-residential
+          - proposal-commercial
+          - proposal-ti
+          - contract-subcontractor
+          - checklist-preconstruction
+          - checklist-safety
+          - change-order
+          - lien-waiver
+          - runbook-lead-qualification
+          - runbook-bid-prep
+          - report-pipeline-summary
+          - report-billing-summary
+      client_name:
+        description: 'Client name (for proposals/contracts)'
+        required: false
+        default: ''
+      project_name:
+        description: 'Project name'
+        required: false
+        default: ''
+      project_value:
+        description: 'Project value (number, no $)'
+        required: false
+        default: ''
+      additional_vars:
+        description: 'Additional variables as JSON (optional)'
+        required: false
+        default: '{}'
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  generate:
+    name: 📄 Generate Document
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 📄 Generate Document
+        id: generate
+        env:
+          DOCUMENT_TYPE: ${{ github.event.inputs.document_type || github.event.client_payload.document_type || 'report-pipeline-summary' }}
+          CLIENT_NAME: ${{ github.event.inputs.client_name || github.event.client_payload.client_name || '' }}
+          PROJECT_NAME: ${{ github.event.inputs.project_name || github.event.client_payload.project_name || 'Untitled Project' }}
+          PROJECT_VALUE: ${{ github.event.inputs.project_value || github.event.client_payload.project_value || '0' }}
+          ADDITIONAL_VARS: ${{ github.event.inputs.additional_vars || '{}' }}
+        run: |
+          python3 << 'PYEOF'
+          import os
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          doc_type     = os.environ.get('DOCUMENT_TYPE', 'report-pipeline-summary')
+          client_name  = os.environ.get('CLIENT_NAME', 'Client')
+          project_name = os.environ.get('PROJECT_NAME', 'Untitled Project')
+          project_value= os.environ.get('PROJECT_VALUE', '0')
+          now          = datetime.now(timezone.utc)
+          date_str     = now.strftime('%Y-%m-%d')
+          ts_str       = now.strftime('%Y-%m-%d %H:%M:%S UTC')
+
+          try:
+              extra_vars = json.loads(os.environ.get('ADDITIONAL_VARS', '{}'))
+          except Exception:
+              extra_vars = {}
+
+          output_dir = Path('data/documents')
+          output_dir.mkdir(parents=True, exist_ok=True)
+
+          safe_project = project_name.replace(' ', '_').replace('/', '-')[:40]
+          safe_date    = date_str
+          filename     = f'{doc_type}_{safe_project}_{safe_date}.md'
+          output_path  = output_dir / filename
+
+          # ── Document templates ──────────────────────────────────────────
+          templates = {
+              'report-pipeline-summary': f"""# Pipeline Summary Report
+          Generated: {ts_str}
+
+          ## Pipeline Overview
+          | Metric | Value |
+          |--------|-------|
+          | Generated | {ts_str} |
+          | Active Leads | (see CRM) |
+          | Hot Leads (≥80) | (see CRM) |
+
+          ## Top Leads
+          See CRM module at https://infinityxonesystems.github.io/construct-iq-360/crm/
+
+          ## Next Actions
+          - Review hot leads
+          - Send follow-up proposals
+          - Update CRM statuses
+          """,
+
+              'report-billing-summary': f"""# Billing Summary Report
+          Generated: {ts_str}
+
+          ## AR Summary
+          | Status | Count | Amount |
+          |--------|-------|--------|
+          | Paid | — | — |
+          | Outstanding | — | — |
+          | Overdue | — | — |
+
+          ## Export Instructions
+          Download billing CSV from the Billing module and import to Google Sheets.
+          """,
+
+              'checklist-preconstruction': f"""# Pre-Construction Checklist
+          Project: {project_name}
+          Client: {client_name}
+          Date: {date_str}
+
+          ## Permits & Approvals
+          - [ ] Building permit obtained
+          - [ ] Electrical permit obtained
+          - [ ] Plumbing permit obtained
+          - [ ] Mechanical permit obtained
+          - [ ] Fire sprinkler permit obtained
+          - [ ] Utility notification (811 call placed)
+          - [ ] Notice of Commencement recorded
+
+          ## Contracts & Insurance
+          - [ ] Owner-Contractor agreement signed
+          - [ ] All subcontractor agreements executed
+          - [ ] GC insurance certificates current
+          - [ ] All sub insurance certificates collected
+          - [ ] Builder's risk policy active
+
+          ## Site Preparation
+          - [ ] Temporary power connected
+          - [ ] Site fence / security established
+          - [ ] SWPPP posted
+          - [ ] Pre-construction meeting held
+          - [ ] Meeting minutes distributed
+          """,
+
+              'checklist-safety': f"""# Site Safety Inspection Checklist
+          Project: {project_name}
+          Inspector: ________________
+          Date: {date_str}
+
+          ## General Safety
+          - [ ] Hard hats worn by all on site
+          - [ ] Safety vests worn
+          - [ ] OSHA 300 log current
+          - [ ] First aid kit stocked
+          - [ ] Emergency contacts posted
+
+          ## Fall Protection
+          - [ ] All openings guarded or covered
+          - [ ] Guardrails on elevated areas
+          - [ ] Ladders properly secured
+
+          ## Electrical Safety
+          - [ ] GFCIs on all outdoor/wet cords
+          - [ ] Extension cords in good condition
+          - [ ] No damaged cords
+
+          ## Corrective Actions Required
+          | Item | Description | Responsible | Due Date |
+          |------|-------------|-------------|----------|
+          | | | | |
+          """,
+
+              'change-order': f"""# Change Order
+          Project: {project_name}
+          Client: {client_name}
+          Date: {date_str}
+          Change Order #: ____
+
+          ## Description of Change
+          {extra_vars.get('description', '[Describe the scope change here]')}
+
+          ## Cost Impact
+          | | Amount |
+          |---|--------|
+          | Original Contract | ${project_value} |
+          | This Change Order | $ |
+          | **New Contract Total** | $ |
+
+          ## Time Impact
+          Calendar days added: ____
+
+          ## Signatures
+          Owner: _________________________ Date: _________
+          Contractor: _________________________ Date: _________
+          """,
+
+              'proposal-residential': f"""# Residential Construction Proposal
+          Client: {client_name}
+          Project: {project_name}
+          Date: {date_str}
+          Total: ${project_value}
+
+          ## Scope of Work
+          Complete construction of residential project including:
+          - Site preparation & foundation
+          - Framing, roofing, exterior envelope
+          - Rough MEP, insulation, drywall
+          - Finishes, cabinets, flooring
+          - Final MEP trim-out
+
+          ## Investment
+          Total Contract Amount: ${project_value}
+          Payment Schedule: 10/15/20/15/15/10/10/5 milestone-based
+
+          ## Timeline
+          Start: ____________
+          Completion: ____________
+
+          ## Signatures
+          Client: _________________________ Date: _________
+          Contractor: _________________________ Date: _________
+          """,
+
+              'proposal-commercial': f"""# Commercial Construction Proposal
+          Client: {client_name}
+          Project: {project_name}
+          Date: {date_str}
+          Total Bid: ${project_value}
+
+          ## Project Overview
+          {extra_vars.get('description', 'Commercial construction project')}
+
+          ## CSI Division Summary
+          | Division | Description | Amount |
+          |----------|-------------|--------|
+          | 01 | General Requirements | $ |
+          | 03 | Concrete | $ |
+          | 05 | Metals | $ |
+          | 06 | Wood & Carpentry | $ |
+          | 07 | Thermal Protection | $ |
+          | 08 | Openings | $ |
+          | 09 | Finishes | $ |
+          | 22 | Plumbing | $ |
+          | 23 | HVAC | $ |
+          | 26 | Electrical | $ |
+          | **TOTAL** | | **${project_value}** |
+
+          ## Terms
+          - Retainage: 10% to 50%, then 5%
+          - Payment: Net 30, AIA G702/G703
+          - Warranty: 1 year from substantial completion
+          """,
+          }
+
+          # Default content for types not explicitly defined
+          content = templates.get(doc_type, f"""# {doc_type.replace('-', ' ').title()}
+          Project: {project_name}
+          Client: {client_name}
+          Generated: {ts_str}
+
+          [Document content to be filled in]
+          """)
+
+          output_path.write_text(content)
+          print(f'Document generated: {output_path}')
+
+          # Write GitHub step summary
+          summary = f"""## Document Generated ✅
+
+          **Type**: {doc_type}
+          **Project**: {project_name}
+          **Client**: {client_name}
+          **File**: `{output_path}`
+          **Generated**: {ts_str}
+          """
+          with open(os.environ.get('GITHUB_STEP_SUMMARY', '/dev/null'), 'a') as f:
+              f.write(summary)
+          PYEOF
+
+      - name: 💾 Commit Document
+        run: |
+          git config user.name "Overseer-Prime"
+          git config user.email "overseer@construct-os.infinityxonesystems.com"
+          git add data/documents/
+          if git diff --staged --quiet; then
+            echo "No new documents to commit."
+          else
+            DOC_TYPE="${{ github.event.inputs.document_type || github.event.client_payload.document_type || 'report' }}"
+            PROJECT="${{ github.event.inputs.project_name || github.event.client_payload.project_name || 'document' }}"
+            git commit -m "📄 Document Pipeline: Generated '$DOC_TYPE' for '$PROJECT'"
+            git push origin main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Pipeline Summary
+        if: always()
+        run: |
+          echo "## 📄 Document Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Type**: ${{ github.event.inputs.document_type || github.event.client_payload.document_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Project**: ${{ github.event.inputs.project_name || github.event.client_payload.project_name }}" >> $GITHUB_STEP_SUMMARY

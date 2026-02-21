@@ -1,7 +1,7 @@
 const CACHE_NAME = 'construct-os-v1';
 const urlsToCache = [
-  '/',
-  '/manifest.json',
+  '/construct-iq-360/',
+  '/construct-iq-360/manifest.json',
 ];
 
 self.addEventListener('install', (event) => {

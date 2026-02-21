@@ -1,0 +1,56 @@
+{
+  "id": "shadow",
+  "name": "Shadow",
+  "role": "Headless Browser Agent",
+  "version": "2.0.0",
+  "description": "Governance-gated headless REST API agent providing full browser automation. Capabilities: form fill, click, type, scroll, snapshot, extract, navigate. Operates with guardrails, rate limiting, and audit logging. Used by all other agents for web-based data acquisition.",
+  "source": "apps/hunter-agent/scraper_orchestrator.py",
+  "api": "apps/hunter-agent/scraper_api.py",
+  "workflow": ".github/workflows/dispatch-bridge.yml",
+  "llm": {
+    "provider": "vertex-ai",
+    "model": "gemini-pro",
+    "role": "Page content classification, form field identification, data extraction schema generation"
+  },
+  "skills": [
+    "Form fill and submit",
+    "Click and keyboard interaction",
+    "Scroll and infinite scroll handling",
+    "Full page snapshot (PNG + HTML)",
+    "Structured data extraction via CSS/XPath selectors",
+    "Stealth mode with user-agent rotation",
+    "Parallel instance pool (1-100 instances)",
+    "Auto-retry with exponential backoff",
+    "REST API wrapper (FastAPI or stdlib fallback)",
+    "Governance audit logging"
+  ],
+  "rest_endpoints": {
+    "POST /orchestrator/start": "Start the browser instance pool",
+    "POST /orchestrator/stop": "Stop and cleanup all instances",
+    "POST /jobs/submit": "Submit a scrape job (returns job_id)",
+    "GET /jobs/{job_id}": "Get job results",
+    "GET /metrics": "Get orchestrator metrics",
+    "POST /snapshot": "Take a full page snapshot"
+  },
+  "governance": {
+    "robots_txt_respected": true,
+    "rate_limit_ms": 1000,
+    "max_instances": 100,
+    "stealth_mode": true,
+    "audit_logged": true,
+    "guardrails": [
+      "robots.txt respected before any scrape",
+      "Rate limiting enforced (configurable, default 1000ms)",
+      "Every action logged to data/dispatch-log/commands.jsonl",
+      "No credential storage in code",
+      "User-agent rotation enabled by default",
+      "Max instances capped at configuration value"
+    ]
+  },
+  "snapshot": {
+    "format": ["png", "html"],
+    "output_dir": "data/snapshots/",
+    "timestamp_format": "YYYY-MM-DD_HH-MM-SS"
+  },
+  "trigger": "repository_dispatch(run-agent, agent=shadow) or direct Python import"
+}

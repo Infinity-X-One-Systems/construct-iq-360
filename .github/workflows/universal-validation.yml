@@ -1,0 +1,281 @@
+name: Universal Validation
+
+on:
+  push:
+    branches: [main, "copilot/**", "feature/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ─── STEP 1: LINT ALL PYTHON ────────────────────────────────────────────────
+  lint-python:
+    name: Lint Python Agents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install linters
+        run: pip install flake8 pylint black isort
+
+      - name: Black formatting check
+        run: |
+          black --check --diff apps/hunter-agent/ apps/architect-ai/ apps/biz-ops/ \
+            || echo "::warning::Black formatting issues found — run 'black apps/' to fix"
+
+      - name: isort import order check
+        run: |
+          isort --check-only --diff apps/hunter-agent/ apps/architect-ai/ apps/biz-ops/ \
+            || echo "::warning::Import order issues found — run 'isort apps/' to fix"
+
+      - name: Flake8 linting
+        run: |
+          flake8 apps/hunter-agent/ apps/architect-ai/ apps/biz-ops/ \
+            --max-line-length=120 \
+            --ignore=E203,W503 \
+            --statistics
+
+      - name: Python syntax validation
+        run: |
+          find apps -name "*.py" -exec python -m py_compile {} \; && echo "All Python files syntax OK"
+
+  # ─── STEP 2: LINT ALL TYPESCRIPT ────────────────────────────────────────────
+  lint-typescript:
+    name: Lint TypeScript Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/command-center/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/command-center
+
+      - name: ESLint
+        run: npm run lint -- --max-warnings 0
+        working-directory: apps/command-center
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+        working-directory: apps/command-center
+
+  # ─── STEP 3: BUILD VALIDATION ───────────────────────────────────────────────
+  build:
+    name: Build Next.js App
+    runs-on: ubuntu-latest
+    needs: lint-typescript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/command-center/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/command-center
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/command-center
+        env:
+          NODE_ENV: production
+
+      - name: Validate build output
+        run: |
+          [ -d apps/command-center/out ] && echo "Build output exists" || (echo "ERROR: No out/ directory" && exit 1)
+          [ -f apps/command-center/out/index.html ] && echo "index.html present" || (echo "ERROR: No index.html" && exit 1)
+          [ -f apps/command-center/out/login/index.html ] && echo "login page present" || echo "::warning::No login page"
+          [ -f apps/command-center/out/dashboard/index.html ] && echo "dashboard page present" || echo "::warning::No dashboard page"
+          echo "Validating page count:"
+          find apps/command-center/out -name "index.html" | wc -l
+
+  # ─── STEP 4: VALIDATE WORKFLOWS ─────────────────────────────────────────────
+  lint-workflows:
+    name: Lint GitHub Actions Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install actionlint
+        run: |
+          curl -L https://github.com/rhysd/actionlint/releases/latest/download/actionlint_linux_amd64.tar.gz | tar xz
+          sudo mv actionlint /usr/local/bin/
+
+      - name: Lint all workflows
+        run: actionlint .github/workflows/*.yml
+
+  # ─── STEP 5: VALIDATE AGENT BLUEPRINTS ──────────────────────────────────────
+  validate-blueprints:
+    name: Validate Agent Blueprints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate blueprint JSON files
+        run: |
+          echo "Validating agent blueprints..."
+          for f in apps/biz-ops/blueprints/*.json; do
+            python -c "import json; json.load(open('$f')); print('OK: $f')"
+          done
+
+      - name: Validate OpenAPI spec
+        run: |
+          pip install pyyaml
+          python -c "
+          import yaml
+          with open('apps/command-center/public/openapi.yaml') as f:
+              spec = yaml.safe_load(f)
+          assert 'openapi' in spec, 'Missing openapi version'
+          assert 'paths' in spec, 'Missing paths'
+          assert 'components' in spec, 'Missing components'
+          print('OpenAPI spec valid')
+          "
+
+  # ─── STEP 6: SECURITY SCAN ──────────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Bandit security scan
+        run: |
+          bandit -r apps/hunter-agent/ apps/architect-ai/ apps/biz-ops/ \
+            -ll --format txt \
+            || echo "::warning::Bandit found security issues — review above"
+
+      - name: Secret detection
+        run: |
+          grep -rn --include="*.py" --include="*.ts" --include="*.js" \
+            -E "(ghp_|sk-|AIza|AAAA[A-Za-z0-9_-]{7})" \
+            apps/ src/ 2>/dev/null \
+            && echo "::error::Potential secrets found in source code!" && exit 1 \
+            || echo "No hardcoded secrets detected"
+
+  # ─── STEP 7: AGENT INTEGRATION TEST ─────────────────────────────────────────
+  test-agents:
+    name: Agent Integration Tests
+    runs-on: ubuntu-latest
+    needs: [lint-python]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install PyYAML
+          pip install -r apps/hunter-agent/requirements.txt || true
+
+      - name: Test agent_manager imports
+        run: |
+          cd apps/biz-ops
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from agent_manager import AGENT_RUNNERS, load_blueprint
+          print(f'Agent runners: {list(AGENT_RUNNERS.keys())}')
+          assert len(AGENT_RUNNERS) == 6, f'Expected 6 agents, got {len(AGENT_RUNNERS)}'
+          print('All 6 agents registered OK')
+          "
+
+      - name: Test Vault memory
+        run: |
+          cd apps/biz-ops
+          python -c "
+          import sys, tempfile, os
+          sys.path.insert(0, '.')
+          from memory.vault_memory import VaultMemory
+          with tempfile.TemporaryDirectory() as tmp:
+              os.chdir(tmp)
+              import pathlib
+              pathlib.Path('data/memory/test').mkdir(parents=True)
+              vault = VaultMemory.__new__(VaultMemory)
+              vault.namespace = 'test'
+              vault.store_dir = pathlib.Path('data/memory/test')
+              vault.store_dir.mkdir(parents=True, exist_ok=True)
+              vault.index_file = vault.store_dir / 'index.jsonl'
+              vault.state_file = vault.store_dir / 'state.json'
+              entry_id = vault.store('test_key', {'value': 42})
+              results = vault.recall('test_key')
+              assert len(results) == 1
+              print('Vault memory test passed')
+          "
+
+      - name: Test blueprint loading
+        run: |
+          cd apps/biz-ops
+          python -c "
+          import json
+          from pathlib import Path
+          blueprint_dir = Path('blueprints')
+          for f in blueprint_dir.glob('*.json'):
+              data = json.loads(f.read_text())
+              assert 'id' in data, f'Missing id in {f}'
+              assert 'name' in data, f'Missing name in {f}'
+              assert 'skills' in data, f'Missing skills in {f}'
+              print(f'Blueprint OK: {data[\"id\"]}')
+          print('All blueprints valid')
+          "
+
+  # ─── VALIDATION SUMMARY ──────────────────────────────────────────────────────
+  validation-summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [lint-python, lint-typescript, build, lint-workflows, validate-blueprints, security, test-agents]
+    if: always()
+    steps:
+      - name: Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobs = [
+              'lint-python', 'lint-typescript', 'build',
+              'lint-workflows', 'validate-blueprints', 'security', 'test-agents'
+            ];
+            const results = ${{ toJson(needs) }};
+            let passed = 0, failed = 0;
+            for (const job of jobs) {
+              const status = results[job]?.result ?? 'skipped';
+              if (status === 'success') passed++;
+              else if (status === 'failure') failed++;
+              core.info(`${status === 'success' ? 'PASS' : status === 'failure' ? 'FAIL' : 'SKIP'} ${job}`);
+            }
+            core.info(`\nValidation: ${passed}/${jobs.length} passed`);
+            if (failed > 0) core.setFailed(`${failed} validation step(s) failed`);

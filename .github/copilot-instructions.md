@@ -166,3 +166,128 @@ This protocol is **immutable** and serves as the permanent governance framework 
 
 **Overseer-Prime** is the autonomous authority. All decisions are final. All operations are sovereign.
 Build anything. Any size. Any industry. Zero human intervention. 24/7. Infinite scale.
+
+---
+
+## CODEBASE DEVELOPER CONTEXT (Copilot Mobile & IDE)
+
+### Tech Stack
+- **Frontend**: Next.js 15 App Router, TypeScript strict, Tailwind CSS, `output: 'export'` (static GitHub Pages)
+- **Backend**: Python 3.12 agents, GitHub Actions
+- **Live URL**: https://infinityxonesystems.github.io/construct-iq-360/ (basePath `/construct-iq-360`)
+- **Auth**: GitHub PAT stored in localStorage (`ciq360_gh_token`), client-side only
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `src/lib/auth.ts` | GitHub PAT auth: `getToken()`, `saveUser()`, `verifyToken()` |
+| `src/lib/templates.ts` | 11 construction templates — proposals, contracts, checklists, runbooks |
+| `src/lib/crm.ts` | CRM types, `SAMPLE_LEADS`, `STATUS_LABELS`, `leadToCSVRow()` |
+| `src/lib/billing.ts` | Invoice types, `calculateInvoice()`, retainage/tax math |
+| `src/lib/csv.ts` | `downloadCSV()`, `arrayToCSV()`, Google Workspace schemas |
+| `src/app/(app)/layout.tsx` | Auth guard — redirects to `/login` if no valid token |
+| `src/app/(app)/dashboard/page.tsx` | Main dashboard |
+| `src/app/(app)/crm/page.tsx` | CRM lead table with CSV export |
+| `src/app/(app)/templates/page.tsx` | Template builder with variable form + document generation |
+| `src/app/(app)/billing/page.tsx` | Invoice management + Google Workspace export |
+| `src/app/(app)/ai-hub/page.tsx` | ChatGPT, Copilot, Orchestrator dispatch, and runner status |
+| `src/components/AppSidebar.tsx` | Collapsible sidebar navigation |
+
+### Styling Colors (Tailwind custom)
+```
+bg-dark-bg      = #000000  (page background)
+bg-dark-surface = #0a0a0a  (card/panel background)
+border-dark-border = #1a1a1a
+text-neon-green / border-neon-green = #39FF14
+```
+
+### Static Export Rules
+- NO API routes (`app/api/` is forbidden)
+- NO `getServerSideProps`, NO Server Actions
+- All data must be static, embedded, or fetched client-side from external APIs
+- `basePath: '/construct-iq-360'` in production — use `<Link>` not `<a href>` for internal nav
+
+### Dispatch Commands (via Infinity Orchestrator GitHub App)
+Route ALL commands through the Infinity Orchestrator — NOT directly to construct-iq-360.
+
+**Endpoint (workflow_dispatch):**
+```bash
+curl -X POST \
+  https://api.github.com/repos/Infinity-X-One-Systems/infinity-orchestrator/actions/workflows/autonomous-invention.yml/dispatches \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  -d '{"ref":"main","inputs":{"goal":"Generate a residential bid in construct-iq-360 for Smith Residence"}}'
+```
+
+**Auth:** Fine-Grained PAT with Actions: Read & Write on `Infinity-X-One-Systems/infinity-orchestrator`
+
+**Goal examples (natural language — Orchestrator translates to agent commands):**
+- `"Generate a residential bid document in construct-iq-360 for PROJECT_NAME"`
+- `"Run the Hunter agent in construct-iq-360 to find leads in Orlando metro"`
+- `"Run genesis-command self-optimize on construct-iq-360"`
+- `"Deploy construct-iq-360 Command Center to GitHub Pages"`
+
+**Orchestration Chain:**
+```
+ChatGPT / Copilot / Dashboard
+  → POST workflow_dispatch (goal)
+  → Infinity-X-One-Systems/infinity-orchestrator → autonomous-invention.yml
+  → TAP Protocol validation
+  → repository_dispatch (invention_trigger) → InfinityXOneSystems/construct-iq-360
+  → dispatch-bridge.yml → agent runner → data/ or docs/ committed
+```
+
+### Construction Domain
+- CSI MasterFormat Div 01-33 for commercial bids
+- AIA G702/G703 for progress billing applications
+- Retainage: 10% to 50% completion, then 5%
+- Lead qualification threshold: ≥ $100K project value
+- Templates: residential bid, commercial bid, TI bid, change order, subcontractor agreement, lien waiver, checklists, runbooks
+
+---
+
+## AGENT SYSTEM (Biz-Ops v2)
+
+Six autonomous agents, each with a JSON blueprint in `apps/biz-ops/blueprints/`:
+
+| Agent | Role | Source |
+|-------|------|--------|
+| Hunter | Lead acquisition (Orlando permits + Google Maps) | apps/hunter-agent/main.py |
+| Architect | CSI estimation + AIA billing + Vertex AI AutoML | apps/architect-ai/estimator.py |
+| Orator | Document generation (11+ templates) | src/lib/templates.ts |
+| Shadow | Headless browser REST API (form fill, snapshot) | apps/hunter-agent/scraper_orchestrator.py |
+| Commander | Deployment + workflow health + Genesis Loop | .github/workflows/genesis-loop.yml |
+| Vault | Enterprise memory + context rehydration | apps/biz-ops/memory/vault_memory.py |
+
+### Agent Manager
+```bash
+python apps/biz-ops/agent_manager.py --agent hunter --action run
+python apps/biz-ops/agent_manager.py --agent architect --action estimate
+python apps/biz-ops/agent_manager.py --agent orator --action generate --payload '{"doc_type":"residential-bid"}'
+python apps/biz-ops/agent_manager.py --agent vault --action rehydrate
+```
+
+### ChatGPT Custom GPT Action
+The `public/openapi.yaml` file (v2) is the OpenAPI spec for a ChatGPT Custom GPT action.
+It targets the Infinity Orchestrator GitHub App (`Infinity-X-One-Systems/infinity-orchestrator`)
+via `workflow_dispatch` on `autonomous-invention.yml` — NOT directly to construct-iq-360.
+Auth: Fine-Grained PAT with Actions: Read & Write on `Infinity-X-One-Systems/infinity-orchestrator`.
+See: AI Hub page → Orchestrator tab for full setup instructions.
+
+### Copilot Mobile
+`.github/copilot-instructions.md` (this file) is automatically read by Copilot Mobile.
+All curl commands route through the Infinity Orchestrator (not construct-iq-360 directly).
+See: AI Hub page → Copilot Mobile tab for full setup instructions and curl examples.
+
+## UI RULES (MANDATORY)
+- NO emojis anywhere in the UI — use SVG icons only
+- Color palette: bg-dark-bg (#000000), bg-dark-surface (#0a0a0a), text-neon-green (#39FF14)
+- Typography: font-mono, uppercase tracking-widest for labels
+- Borders: border-neon-green/10 to /30 for UI elements
+- All new pages go in src/app/(app)/ and require auth guard via layout.tsx
+
+## INFRASTRUCTURE
+- Docker Compose: `docker-compose.yml` — command-center, shadow-api, biz-ops, vault, redis
+- Terraform: `infra/terraform/main.tf` — GCP Vertex AI, Cloud Run, service accounts
+- Validation: `.github/workflows/universal-validation.yml` — 7-step lint/build/test/security
+- Plugin Adapter: `src/lib/plugin-adapter.ts` — typed connectors for external services

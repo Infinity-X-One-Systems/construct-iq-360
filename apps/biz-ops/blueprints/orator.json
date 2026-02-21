@@ -1,0 +1,42 @@
+{
+  "id": "orator",
+  "name": "Orator",
+  "role": "Document Generation Agent",
+  "version": "2.0.0",
+  "description": "Generates professional construction documents: proposals, contracts, change orders, lien waivers, NTOs, subcontractor agreements, checklists, and runbooks. Pulls live data from CRM and billing systems. All templates are agent-editable.",
+  "source": "apps/command-center/src/lib/templates.ts",
+  "workflow": ".github/workflows/document-pipeline.yml",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "role": "Document drafting, legal language generation, contract clause suggestions"
+  },
+  "templates": [
+    "residential-bid",
+    "commercial-bid",
+    "ti-bid",
+    "change-order",
+    "subcontractor-agreement",
+    "lien-waiver-conditional",
+    "lien-waiver-unconditional",
+    "notice-to-owner",
+    "pre-construction-checklist",
+    "site-safety-checklist",
+    "lead-qualification-runbook",
+    "bid-preparation-runbook"
+  ],
+  "skills": [
+    "Template variable interpolation ({{variable}} syntax)",
+    "CRM data injection (project, client, contact fields)",
+    "Billing data injection (amounts, retainage, tax)",
+    "Markdown + CSV + PDF export",
+    "Google Workspace Docs integration via Apps Script",
+    "Florida-specific legal clauses (NTO, lien waiver)",
+    "AIA-style document formatting"
+  ],
+  "outputs": {
+    "documents": "data/documents/{doc_type}_{timestamp}.md",
+    "csv_exports": "data/exports/{doc_type}_{timestamp}.csv"
+  },
+  "trigger": "repository_dispatch(generate-document) or document-pipeline.yml"
+}

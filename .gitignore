@@ -31,6 +31,10 @@ venv/
 ENV/
 env/
 
+# Exceptions: Next.js source lib is intentionally tracked
+!apps/command-center/src/lib/
+!apps/command-center/src/lib/*
+
 # Node.js
 node_modules/
 npm-debug.log*
@@ -62,3 +66,18 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# Terraform
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/terraform.tfvars
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/crash.log
+
+# GCP credentials (never commit)
+gcp-key.json
+*.credentials.json
+
+# Docker
+.docker/

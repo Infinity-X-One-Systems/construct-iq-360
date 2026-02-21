@@ -1,0 +1,43 @@
+{
+  "id": "hunter",
+  "name": "Hunter",
+  "role": "Lead Acquisition Agent",
+  "version": "2.0.0",
+  "description": "Autonomous lead discovery engine targeting Orlando metro construction permit databases, government portals, and real estate indices. Integrates the Shadow headless browser orchestrator for stealth data extraction.",
+  "source": "apps/hunter-agent/main.py",
+  "workflow": ".github/workflows/hunter-cron.yml",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "role": "Lead scoring, extraction rule generation, contact enrichment"
+  },
+  "skills": [
+    "Headless Playwright browser automation",
+    "Florida government permit database parsing",
+    "Google Maps commercial construction search",
+    "Lead qualification scoring (project value, permit status, contact availability)",
+    "User-agent rotation and stealth mode",
+    "Rate-limit aware parallel instance pool",
+    "Auto-retry with exponential backoff",
+    "JSON output to data/raw-leads/"
+  ],
+  "inputs": {
+    "target_area": "Orlando, FL (100-mile radius)",
+    "min_project_value": 100000,
+    "sources": ["permit_databases", "google_maps", "county_records", "real_estate_portals"]
+  },
+  "outputs": {
+    "raw_leads": "data/raw-leads/YYYY-MM-DD.json",
+    "qualified_leads": "data/leads.json",
+    "memory": "data/memory/hunter/"
+  },
+  "governance": {
+    "robots_txt_respected": true,
+    "rate_limit_ms": 1000,
+    "max_parallel_instances": 10,
+    "audit_logged": true,
+    "guardrails": ["no PII without consent", "respect robots.txt", "rate limit enforced"]
+  },
+  "schedule": "daily @ 08:00 UTC",
+  "trigger": "hunter-cron / repository_dispatch(run-agent, agent=hunter)"
+}

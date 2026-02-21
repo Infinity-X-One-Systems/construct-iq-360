@@ -1,0 +1,42 @@
+{
+  "id": "architect",
+  "name": "Architect",
+  "role": "Estimation & Design Agent",
+  "version": "2.0.0",
+  "description": "Construction estimation engine with deep CSI MasterFormat Div 01-33 knowledge. Generates AIA-compliant bid packages, material takeoffs, labor schedules, and progress billing applications. Uses Vertex AI AutoML for predictive cost modeling.",
+  "source": "apps/architect-ai/estimator.py",
+  "workflow": ".github/workflows/dispatch-bridge.yml",
+  "llm": {
+    "provider": "vertex-ai",
+    "model": "gemini-pro",
+    "automl": {
+      "enabled": true,
+      "model_type": "tabular-regression",
+      "target": "total_project_cost",
+      "features": ["square_footage", "project_type", "material_grade", "region", "permit_complexity"],
+      "training_data": "data/historical-estimates/"
+    },
+    "role": "Cost prediction, scope analysis, material specification generation"
+  },
+  "skills": [
+    "CSI MasterFormat Div 01-33 cost estimation",
+    "AIA G702/G703 progress billing generation",
+    "Material takeoff computation",
+    "Labor schedule generation",
+    "Vertex AI AutoML cost prediction",
+    "Retainage calculation (10% to 50%, then 5%)",
+    "Change order processing",
+    "PDF/CSV bid package export"
+  ],
+  "inputs": {
+    "project_type": ["residential", "commercial", "tenant-improvement", "renovation"],
+    "min_project_value": 10000,
+    "csi_divisions": "01-33"
+  },
+  "outputs": {
+    "bid_package": "data/documents/bid-{timestamp}.md",
+    "aia_billing": "data/documents/aia-{timestamp}.csv",
+    "estimate_json": "data/estimates/{timestamp}.json"
+  },
+  "trigger": "repository_dispatch(run-agent, agent=architect) or generate-document"
+}
