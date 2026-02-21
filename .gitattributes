@@ -1,0 +1,46 @@
+# Git attributes for construct-iq-360
+# Ensures consistent line endings across platforms.
+
+# Default: normalise all text files to LF in the repository
+* text=auto eol=lf
+
+# PowerShell scripts — CRLF on Windows checkout (required by PowerShell 5.1)
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+
+# Markdown — LF for consistent rendering
+*.md text eol=lf
+
+# YAML — LF
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# JSON — LF
+*.json text eol=lf
+
+# Python — LF
+*.py text eol=lf
+
+# TypeScript / JavaScript — LF
+*.ts  text eol=lf
+*.tsx text eol=lf
+*.js  text eol=lf
+*.jsx text eol=lf
+
+# Shell scripts — LF (must not have CRLF)
+*.sh text eol=lf
+
+# Binary files — no line-ending conversion
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.zip  binary
+*.tar  binary
+*.gz   binary

@@ -174,3 +174,40 @@
 ---
 
 **System Enhanced. Universal Invention Engine v3.0 Active. Zero Human Intervention. Infinite Scale.**
+
+---
+
+## REPO_MAP
+
+| Path | Purpose |
+|------|---------|
+| `.infinity/` | Persistent memory system (this directory) |
+| `apps/` | Autonomous agent applications |
+| `data/` | Runtime data — leads, dispatch logs, outputs |
+| `docs/` | Documentation and reports |
+| `.github/workflows/` | GitHub Actions automation |
+| `infra/` | Terraform and Docker infrastructure |
+
+---
+
+## RUNTIME
+
+- **Branch:** main
+- **Deploy Target:** GitHub Pages (`https://infinityxonesystems.github.io/construct-iq-360/`)
+- **Python Version:** 3.12
+- **Node Version:** 20.x
+- **PowerShell Requirement:** 5.1+ (Windows) or PowerShell 7+ (cross-platform)
+
+---
+
+## STATE
+
+- **Memory System:** INITIALIZED
+- **memory.ps1:** OPERATIONAL
+- **Sections:** REPO_MAP, RUNTIME, STATE, LOG
+
+---
+
+## LOG
+
+- `[2026-02-21 09:58:00 UTC]` Persistent memory system initialized — memory.ps1, README.md, validate-memory.ps1 created.
