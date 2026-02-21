@@ -17,13 +17,13 @@ Data Pipeline:
 Automation: Daily via .github/workflows/hunter-cron.yml
 """
 
+import asyncio
+import json
 import os
 import sys
-import json
-import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 def initialize_hunter():
@@ -34,16 +34,16 @@ def initialize_hunter():
     print(f"⏰ Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"🐍 Python: {sys.version.split()[0]}")
     print(f"📂 Working Dir: {os.getcwd()}")
-    print(f"🎯 Target: Orlando, FL (100-mile radius)")
+    print("🎯 Target: Orlando, FL (100-mile radius)")
     print()
-    
+
     # Verify critical environment variables
     github_token = os.getenv('GITHUB_TOKEN')
     if github_token:
         print("✅ GitHub token detected")
     else:
         print("⚠️  No GitHub token found (may be needed for issue creation)")
-    
+
     print()
     print("🔍 INITIALIZING ORLANDO HUNT PROTOCOL...")
     print()
@@ -117,40 +117,43 @@ def generate_mock_permit_data() -> List[Dict[str, Any]]:
 async def scrape_google_maps_playwright(query: str, location: str) -> List[Dict[str, Any]]:
     """
     Scrape Google Maps for construction projects using Playwright.
-    
+
     Args:
         query: Search query (e.g., "New Commercial Construction")
         location: Location focus (e.g., "Orlando, FL")
-    
+
     Returns:
         List of discovered project leads
     """
     try:
         from playwright.async_api import async_playwright
-        
+
         leads = []
-        
+
         async with async_playwright() as p:
-            print(f"   🌐 Launching headless browser...")
+            print("   🌐 Launching headless browser...")
             browser = await p.chromium.launch(headless=True)
             context = await browser.new_context(
                 viewport={'width': 1920, 'height': 1080},
                 user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             )
             page = await context.new_page()
-            
+
             # Build Google Maps search URL
-            search_url = f"https://www.google.com/maps/search/{query.replace(' ', '+')}+near+{location.replace(' ', '+')}"
+            search_url = (
+                f"https://www.google.com/maps/search/"
+                f"{query.replace(' ', '+')}+near+{location.replace(' ', '+')}"
+            )
             print(f"   📍 Searching: {query} near {location}")
-            
+
             try:
                 await page.goto(search_url, wait_until='networkidle', timeout=30000)
                 await page.wait_for_timeout(3000)  # Allow content to load
-                
+
                 # Extract business listings (simplified for MVP)
                 # In production, would parse actual map results
-                print(f"   ✅ Google Maps search completed")
-                
+                print("   ✅ Google Maps search completed")
+
                 # For MVP, return mock data based on search
                 # In production: parse actual results from page
                 mock_gmaps_results = [
@@ -158,7 +161,7 @@ async def scrape_google_maps_playwright(query: str, location: str) -> List[Dict[
                         "project_name": f"{query} Project Alpha",
                         "developer": "Orlando Commercial Builders",
                         "project_value": 650000,
-                        "location": f"Orlando, FL (from Google Maps)",
+                        "location": "Orlando, FL (from Google Maps)",
                         "contact": "info@orlandocommercial.com",
                         "project_type": "Commercial Construction",
                         "source": "Google Maps Search",
@@ -167,16 +170,16 @@ async def scrape_google_maps_playwright(query: str, location: str) -> List[Dict[
                     }
                 ]
                 leads.extend(mock_gmaps_results)
-                
+
             except Exception as e:
                 print(f"   ⚠️  Google Maps scrape error: {e}")
-            
+
             await browser.close()
-        
+
         return leads
-        
+
     except ImportError:
-        print(f"   ⚠️  Playwright not available, skipping Google Maps search")
+        print("   ⚠️  Playwright not available, skipping Google Maps search")
         return []
     except Exception as e:
         print(f"   ❌ Error during Playwright scraping: {e}")
@@ -186,21 +189,21 @@ async def scrape_google_maps_playwright(query: str, location: str) -> List[Dict[
 def scrape_sources() -> List[Dict[str, Any]]:
     """
     Execute multi-source scraping across Orlando construction data.
-    
+
     Returns:
         Combined list of leads from all sources
     """
     print("🌐 SCRAPING PHASE - ORLANDO FOCUS")
     print("-" * 40)
-    
+
     all_leads = []
-    
+
     # Source 1: Mock Construction Permit Data
     print("   📋 Source 1: Mock Construction Permits")
     mock_permits = generate_mock_permit_data()
     all_leads.extend(mock_permits)
     print(f"   ✅ Found {len(mock_permits)} permit records")
-    
+
     # Source 2: Google Maps Search (via Playwright)
     print("   🗺️  Source 2: Google Maps Search")
     try:
@@ -215,82 +218,82 @@ def scrape_sources() -> List[Dict[str, Any]]:
         print(f"   ✅ Found {len(gmaps_leads)} Google Maps results")
     except Exception as e:
         print(f"   ⚠️  Google Maps search skipped: {e}")
-    
+
     print(f"   📊 Total Discovered: {len(all_leads)} raw leads")
     print()
-    
+
     return all_leads
 
 
 def qualify_leads(leads: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Filter and qualify leads based on criteria.
-    
+
     Qualification Rules:
         - Minimum project value: $100,000
         - Must have valid location
         - Must have contact information
-    
+
     Args:
         leads: Raw leads from scraping
-    
+
     Returns:
         Qualified leads meeting criteria
     """
     print("🤖 QUALIFICATION PHASE")
     print("-" * 40)
     print("   Applying qualification filters...")
-    
+
     qualified = []
     MIN_VALUE = 100000
-    
+
     for lead in leads:
         # Check minimum value
         project_value = lead.get('project_value', 0)
         if project_value < MIN_VALUE:
             continue
-        
+
         # Check required fields
         if not lead.get('location'):
             continue
         if not lead.get('contact'):
             continue
-        
+
         # Add qualification metadata
         lead['qualified'] = True
         lead['qualification_date'] = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
         lead['min_value_check'] = f"PASS (${project_value:,} >= ${MIN_VALUE:,})"
-        
+
         qualified.append(lead)
-    
+
     print(f"   ✅ Qualified: {len(qualified)}/{len(leads)} leads")
     print()
-    
+
     return qualified
 
 
 def save_leads_to_json(leads: List[Dict[str, Any]], output_dir: Path) -> Path:
     """
     Save leads to JSON file in data/raw-leads/ directory.
-    
+
     Args:
         leads: Qualified leads to save
         output_dir: Base output directory (repo root)
-    
+
     Returns:
         Path to saved JSON file
     """
     print("💾 PERSISTENCE PHASE")
     print("-" * 40)
-    
+
     # Create data/raw-leads directory
     raw_leads_dir = output_dir / "data" / "raw-leads"
     raw_leads_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create filename with today's date
     today = datetime.utcnow().strftime('%Y-%m-%d')
     output_file = raw_leads_dir / f"{today}.json"
-    
+
     # Save leads to JSON
     output_data = {
         "scrape_date": datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
@@ -298,71 +301,71 @@ def save_leads_to_json(leads: List[Dict[str, Any]], output_dir: Path) -> Path:
         "total_leads": len(leads),
         "leads": leads
     }
-    
+
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
-    
+
     print(f"   ✅ Saved {len(leads)} leads to: {output_file}")
     print()
-    
+
     return output_file
 
 
 def create_github_issues(qualified_leads: List[Dict[str, Any]]):
     """
     Create GitHub Issues for qualified leads.
-    
+
     Args:
         qualified_leads: Leads that passed qualification
     """
     print("📝 GITHUB INTEGRATION PHASE")
     print("-" * 40)
-    
+
     if not qualified_leads:
         print("   ℹ️  No qualified leads to publish")
         print()
         return
-    
+
     github_token = os.getenv('GITHUB_TOKEN')
     if not github_token:
         print("   ⚠️  GITHUB_TOKEN not available, skipping issue creation")
         print("   💡 Issues will be created when run via GitHub Actions")
         print()
         return
-    
+
     try:
         from github import Github
-        
+
         g = Github(github_token)
         repo = g.get_repo("InfinityXOneSystems/construct-iq-360")
-        
+
         for lead in qualified_leads:
             # Create issue title
             title = f"[LEAD] {lead.get('developer', 'Unknown')} - {lead.get('project_name', 'Project')}"
-            
+
             # Create issue body
             body = f"""## 🎯 New Lead Discovered - Orlando, FL
 
-**Project:** {lead.get('project_name', 'N/A')}  
-**Developer:** {lead.get('developer', 'N/A')}  
-**Estimated Value:** ${lead.get('project_value', 0):,}  
-**Location:** {lead.get('location', 'N/A')}  
-**Contact:** {lead.get('contact', 'N/A')}  
-**Type:** {lead.get('project_type', 'N/A')}  
+**Project:** {lead.get('project_name', 'N/A')}
+**Developer:** {lead.get('developer', 'N/A')}
+**Estimated Value:** ${lead.get('project_value', 0):,}
+**Location:** {lead.get('location', 'N/A')}
+**Contact:** {lead.get('contact', 'N/A')}
+**Type:** {lead.get('project_type', 'N/A')}
 
 **Coordinates:** {lead.get('lat', 'N/A')}, {lead.get('lng', 'N/A')}
 
 ---
 
-**Discovered:** {lead.get('qualification_date', 'N/A')}  
-**Source:** {lead.get('source', 'Automated Hunt')}  
+**Discovered:** {lead.get('qualification_date', 'N/A')}
+**Source:** {lead.get('source', 'Automated Hunt')}
 **Status:** Qualified - Awaiting Review
 
 ---
 
 *This lead was automatically discovered by the Hunter Agent.*
 """
-            
+
             # Create the issue
             issue = repo.create_issue(
                 title=title,
@@ -370,10 +373,10 @@ def create_github_issues(qualified_leads: List[Dict[str, Any]]):
                 labels=['lead', 'automated', 'orlando', 'needs-review']
             )
             print(f"   ✅ Created issue #{issue.number}: {title}")
-        
+
         print(f"   📤 Successfully created {len(qualified_leads)} GitHub issues")
         print()
-        
+
     except ImportError:
         print("   ⚠️  PyGithub not available, skipping issue creation")
         print()
@@ -400,26 +403,26 @@ def generate_report(stats):
 def main():
     """Main execution flow for the Hunter Agent."""
     start_time = datetime.utcnow()
-    
+
     # Initialize
     initialize_hunter()
-    
+
     # Get repository root (two levels up from main.py)
     repo_root = Path(__file__).parent.parent.parent
-    
+
     # Execute scraping
     raw_leads = scrape_sources()
-    
+
     # Qualify leads
     qualified = qualify_leads(raw_leads)
-    
+
     # Save to JSON file
     if qualified:
-        output_file = save_leads_to_json(qualified, repo_root)
-    
+        save_leads_to_json(qualified, repo_root)
+
     # Create GitHub issues
     create_github_issues(qualified)
-    
+
     # Generate report
     execution_time = (datetime.utcnow() - start_time).total_seconds()
     stats = {
@@ -432,11 +435,11 @@ def main():
         'execution_time': f"{execution_time:.2f}s"
     }
     generate_report(stats)
-    
+
     # Save execution log to hunter output directory
     output_dir = Path(__file__).parent / "output"
     output_dir.mkdir(exist_ok=True)
-    
+
     log_file = output_dir / f"hunt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
     with open(log_file, 'w') as f:
         json.dump(stats, f, indent=2)

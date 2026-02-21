@@ -22,11 +22,11 @@ Usage:
     python agent_manager.py --agent vault --action rehydrate
 """
 
+import argparse
+import json
+import logging
 import os
 import sys
-import json
-import argparse
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
