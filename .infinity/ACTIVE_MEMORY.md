@@ -188,3 +188,62 @@
 ---
 
 **System Enhanced. Universal Invention Engine v3.0 Active. Zero Human Intervention. Infinite Scale.**
+
+---
+
+## REPO_MAP
+
+| Path | Role |
+|------|------|
+| `.infinity/` | Local memory system (ACTIVE_MEMORY.md, memory.ps1, README.md) |
+| `.github/workflows/` | All autonomous GitHub Actions workflows |
+| `apps/command-center/` | Next.js 15 frontend (static GitHub Pages export) |
+| `apps/biz-ops/` | Python agent manager + 6 agent blueprints |
+| `apps/hunter-agent/` | Lead acquisition scraper |
+| `apps/architect-ai/` | CSI estimation + AIA billing engine |
+| `data/` | Runtime data (leads.json, dispatch-log/, shadow-jobs/) |
+| `docs/` | Generated reports and integration guides |
+| `infra/terraform/` | GCP Vertex AI + Cloud Run provisioning |
+| `public/` | OpenAPI spec and ChatGPT plugin manifest |
+
+---
+
+## RUNTIME
+
+| Key | Value |
+|-----|-------|
+| Node | 20.x (apps/command-center) |
+| Python | 3.12 (apps/biz-ops, apps/hunter-agent, apps/architect-ai) |
+| Framework | Next.js 15 App Router, output: export |
+| Base Path | /construct-iq-360 (GitHub Pages) |
+| Auth | GitHub PAT — localStorage key: ciq360_gh_token |
+| Dispatch | repository_dispatch → dispatch-bridge.yml |
+| Memory Script | .infinity/memory.ps1 (PowerShell 5.1) |
+
+---
+
+## STATE
+
+| Key | Value |
+|-----|-------|
+| memory_version | 1.0 |
+| last_sync | 2026-02-21T09:56:00Z |
+| active_agents | hunter, architect, orator, shadow, commander, vault |
+| auto_merge | enabled |
+| genesis_loop | every 6 hours |
+| dispatch_bridge | operational |
+| universal_invention_engine | v3.0 |
+
+---
+
+## LOG
+
+| Timestamp (UTC) | Event |
+|-----------------|-------|
+| 2026-02-21 09:56:00 | Memory system formalised — REPO_MAP, RUNTIME, STATE, LOG sections added |
+| 2026-02-21 09:56:00 | memory.ps1 created — supports sync, read, write, set commands (PS 5.1) |
+| 2026-02-21 09:56:00 | .infinity/README.md created — usage guide and #Requires caveat |
+| 2026-02-19 21:19:00 | Org architecture guide created — docs/ORG_ARCHITECTURE.md |
+| 2026-02-19 21:19:00 | Dispatch Bridge deployed — Infinity Orchestrator command receiver online |
+| 2026-02-19 20:08:00 | Sync Validator deployed — daily remote/local divergence audit |
+| 2026-02-19 07:12:00 | PR Orchestrator deployed — Draft-to-Ready automation |
